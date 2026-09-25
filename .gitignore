@@ -44,3 +44,6 @@ run/
 **/src/generated/**/.cache/
 repo/
 !**/src/**/repo/
+
+### Claude Code ###
+.claude/
