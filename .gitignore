@@ -1,6 +1,12 @@
 ### Gradle ###
 .gradle
-build/
+# Ignore everything in build/ except the mod jar
+/build/*
+!/build/libs/
+/build/libs/*
+!/build/libs/happyvillagers-*.jar
+/build/libs/*-sources.jar
+/build/libs/*-javadoc.jar
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/**/build/
 
