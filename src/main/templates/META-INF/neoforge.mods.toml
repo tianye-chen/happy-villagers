@@ -8,7 +8,7 @@ version="${mod_version}"
 displayName="${mod_name}"
 authors="tianye"
 description='''
-Villagers have a Happiness stat (0-10) driven by their home, neighbours, food and light.
+Villagers have a Happiness stat (0-10) driven by their home, neighbors, food and light.
 Happy villagers offer cheaper and rarer trades; miserable villagers overcharge, and at 0 they quit.
 '''
 

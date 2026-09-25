@@ -5,10 +5,10 @@
       "id": "minecraft:wooden_hoe"
     },
     "title": {
-      "translate": "advancements.happyvillagers.labour_strike.title"
+      "translate": "advancements.happyvillagers.labor_strike.title"
     },
     "description": {
-      "translate": "advancements.happyvillagers.labour_strike.description"
+      "translate": "advancements.happyvillagers.labor_strike.description"
     },
     "frame": "task",
     "show_toast": true,

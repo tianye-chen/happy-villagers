@@ -18,7 +18,7 @@ import net.neoforged.neoforge.event.entity.player.TradeWithVillagerEvent;
 public final class ModAdvancements {
     public static final String CUSTOMER_SERVICE = "customer_service";
     public static final String MENDING_FINALLY = "mending_finally";
-    public static final String LABOUR_STRIKE = "labour_strike";
+    public static final String LABOR_STRIKE = "labor_strike";
     private static final String CRITERION = "trigger";
 
     private ModAdvancements() {}

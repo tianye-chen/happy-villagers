@@ -174,7 +174,7 @@ public class HappinessGameTests {
     }
 
     @GameTest(template = EMPTY, skyAccess = true)
-    public static void tinyCellIsPenalised(GameTestHelper helper) {
+    public static void tinyCellIsPenalized(GameTestHelper helper) {
         // 1x1x2 cell, typical of a trading hall
         for (int y = 0; y <= 3; y++) {
             for (int x = 0; x <= 2; x++) {
@@ -382,7 +382,7 @@ public class HappinessGameTests {
         BlockPos near = helper.absolutePos(new BlockPos(8, 1, 12));
         witness.teleportTo(near.getX() + 0.5, near.getY(), near.getZ() + 0.5);
         helper.succeedWhen(() -> {
-            check(helper, hasAdvancement(witness, ModAdvancements.LABOUR_STRIKE), "a nearby player should get Labour Strike");
+            check(helper, hasAdvancement(witness, ModAdvancements.LABOR_STRIKE), "a nearby player should get Labor Strike");
             check(helper, villager.getVillagerData().getProfession() == VillagerProfession.NONE, "villager should have quit");
             check(helper, HappinessManager.get(villager).hasQuit(), "quit flag should be set");
             check(helper, villager.getOffers().isEmpty(), "a villager who quit has no trades");

@@ -63,7 +63,7 @@ A remembered home is forgotten once it no longer closes, e.g. a wall is knocked 
 | Saw a villager die (within 16 blocks, line of sight) | −2.0 | 2 days |
 | Village saved from a raid | +1.5 | 2 days |
 
-A lit 5×5 house with a bed, door, windows, a plant, food and neighbours lands around 7–8; a 7×7 house pushes it past 9. A homeless villager with food and neighbours sits around 4 (Grumpy); without them it sits near 1. A 1×1 trading-hall cell drops to 0.
+A lit 5×5 house with a bed, door, windows, a plant, food and neighbors lands around 7–8; a 7×7 house pushes it past 9. A homeless villager with food and neighbors sits around 4 (Grumpy); without them it sits near 1. A 1×1 trading-hall cell drops to 0.
 
 ## Config
 
@@ -98,7 +98,7 @@ Bonus trades are JSON files in `data/<namespace>/happyvillagers/bonus_trades/`. 
 Under the Adventure tab, after *What a Deal!*:
 - **Customer Service**: trade with an Ecstatic villager.
 - **Mending, Finally**: buy the happiness-10 Mending book.
-- **Labour Strike**: be nearby when a villager quits its job.
+- **Labor Strike**: be nearby when a villager quits its job.
 
 ## How trades are changed
 
@@ -110,7 +110,7 @@ Requires **JDK 21** (for example `brew install --cask temurin@21`).
 
 ```sh
 export JAVA_HOME=$(/usr/libexec/java_home -v 21)
-./gradlew build              # -> build/libs/happyvillagers-1.1.0.jar
+./gradlew build              # -> build/libs/happyvillagers-1.1.1.jar
 ./gradlew runClient          # dev client with Jade
 ./gradlew runGameTestServer  # 15 in-world tests (homes, trading, quitting, mood events, tastes, crowding, advancements)
 ```

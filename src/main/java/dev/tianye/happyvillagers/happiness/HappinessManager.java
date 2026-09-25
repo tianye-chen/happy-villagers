@@ -105,7 +105,7 @@ public final class HappinessManager {
         level.broadcastEntityEvent(villager, ANGRY_PARTICLES);
         villager.playSound(SoundEvents.VILLAGER_NO, 1.0F, 0.8F);
         for (ServerPlayer witness : level.getEntitiesOfClass(ServerPlayer.class, villager.getBoundingBox().inflate(STRIKE_WITNESS_RADIUS))) {
-            ModAdvancements.award(witness, ModAdvancements.LABOUR_STRIKE);
+            ModAdvancements.award(witness, ModAdvancements.LABOR_STRIKE);
         }
     }
 

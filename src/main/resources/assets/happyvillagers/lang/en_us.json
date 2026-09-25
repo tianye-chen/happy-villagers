@@ -30,7 +30,7 @@
   "happyvillagers.factor.no_windows": "No windows",
   "happyvillagers.factor.greenery": "Greenery (%s)",
   "happyvillagers.factor.no_greenery": "No greenery",
-  "happyvillagers.factor.social": "Chatted with neighbours",
+  "happyvillagers.factor.social": "Chatted with neighbors",
   "happyvillagers.factor.lonely": "Lonely: no one to talk to",
   "happyvillagers.factor.food": "Food at hand",
   "happyvillagers.factor.hungry": "No food nearby",
@@ -54,6 +54,6 @@
   "advancements.happyvillagers.customer_service.description": "Trade with an Ecstatic villager",
   "advancements.happyvillagers.mending_finally.title": "Mending, Finally",
   "advancements.happyvillagers.mending_finally.description": "Buy a Mending book from a villager who couldn't be happier",
-  "advancements.happyvillagers.labour_strike.title": "Labour Strike",
-  "advancements.happyvillagers.labour_strike.description": "Make a villager so miserable they quit their job"
+  "advancements.happyvillagers.labor_strike.title": "Labor Strike",
+  "advancements.happyvillagers.labor_strike.description": "Make a villager so miserable they quit their job"
 }
