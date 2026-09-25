@@ -69,6 +69,12 @@ A lit 5×5 house with a bed, door, windows, a plant, food and neighbors lands ar
 
 `config/happyvillagers-common.toml` is created on first launch. Every number above can be changed there.
 
+### Performance
+
+- Each villager re-checks its surroundings every `evaluationIntervalTicks` (default 200, i.e. 10 s). Villagers are staggered, and the first check after a chunk loads is spread over 2 s.
+- `maxEvaluationsPerTick` (default 8) caps checks per server tick. Loading a big village spreads its work over a few ticks instead of causing a lag spike. A villager whose trade screen is opened is always checked immediately.
+- The food search reads at most `foodMaxContainers` (default 32) of the nearest containers. Each container's result is cached for one interval and shared by all villagers.
+
 Mood names are in `assets/happyvillagers/lang/en_us.json`. Profession tastes are the block tags `data/happyvillagers/tags/block/tastes/<profession>.json`; modded professions use `tastes/<namespace>/<profession>`.
 
 ### Bonus trades (datapack)
@@ -110,7 +116,7 @@ Requires **JDK 21** (for example `brew install --cask temurin@21`).
 
 ```sh
 export JAVA_HOME=$(/usr/libexec/java_home -v 21)
-./gradlew build              # -> build/libs/happyvillagers-1.1.1.jar
+./gradlew build              # -> build/libs/happyvillagers-1.1.2.jar
 ./gradlew runClient          # dev client with Jade
 ./gradlew runGameTestServer  # 15 in-world tests (homes, trading, quitting, mood events, tastes, crowding, advancements)
 ```

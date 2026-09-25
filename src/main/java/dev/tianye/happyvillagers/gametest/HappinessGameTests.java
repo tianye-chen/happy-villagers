@@ -1,5 +1,6 @@
 package dev.tianye.happyvillagers.gametest;
 
+import dev.tianye.happyvillagers.HappyConfig;
 import dev.tianye.happyvillagers.ModAdvancements;
 import dev.tianye.happyvillagers.HappyVillagers;
 import dev.tianye.happyvillagers.happiness.HappinessCalculator;
@@ -272,6 +273,55 @@ public class HappinessGameTests {
         double expected = HappinessCalculator.areaScore(50) - HappinessCalculator.areaScore(75);
         check(helper, crowded != null && Math.abs(crowded.value() - expected) < 1e-9 && crowded.detail() == 3,
                 "three residents should cost " + expected + ", got " + crowded);
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true, timeoutTicks = 300)
+    public static void foodInNearbyChestCounts(GameTestHelper helper) {
+        buildFloor(helper);
+        Villager villager = helper.spawnWithNoFreeWill(EntityType.VILLAGER, 8, 1, 8);
+        BlockPos chestPos = new BlockPos(10, 1, 8);
+        helper.setBlock(chestPos, Blocks.CHEST);
+        HappinessData data = HappinessManager.get(villager);
+        HappinessCalculator.evaluate(helper.getLevel(), villager, data);
+        check(helper, factor(data, "hungry") != null, "an empty chest is no food");
+
+        ((net.minecraft.world.Container) helper.getBlockEntity(chestPos)).setItem(0, new ItemStack(Items.BREAD, 3));
+        Villager neighbor = helper.spawnWithNoFreeWill(EntityType.VILLAGER, 8, 1, 10); // fresh villager, same chest
+        HappinessData neighborData = HappinessManager.get(neighbor);
+        helper.runAfterDelay(HappyConfig.EVALUATION_INTERVAL.get() + 1, () -> {
+            // The empty-chest answer was cached for one evaluation interval; after that the bread is found.
+            HappinessCalculator.evaluate(helper.getLevel(), neighbor, neighborData);
+            check(helper, factor(neighborData, "food") != null, "bread in a chest within range counts as food");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true, timeoutTicks = 200)
+    public static void budgetEventuallyEvaluatesEveryone(GameTestHelper helper) {
+        buildFloor(helper);
+        List<Villager> crowd = new ArrayList<>();
+        for (int x = 1; x < 15; x += 3) {
+            for (int z = 1; z < 15; z += 3) {
+                crowd.add(helper.spawnWithNoFreeWill(EntityType.VILLAGER, x, 1, z));
+            }
+        }
+        helper.succeedWhen(() -> {
+            long pending = crowd.stream().filter(v -> !HappinessManager.get(v).isEvaluated()).count();
+            check(helper, pending == 0, pending + " of " + crowd.size() + " villagers still waiting for their first evaluation");
+        });
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true)
+    public static void bedOutdoorsStaysHomeless(GameTestHelper helper) {
+        buildFloor(helper);
+        helper.setBlock(new BlockPos(5, 1, 5), Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING, Direction.SOUTH).setValue(BedBlock.PART, BedPart.FOOT));
+        helper.setBlock(new BlockPos(5, 1, 6), Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING, Direction.SOUTH).setValue(BedBlock.PART, BedPart.HEAD));
+        Villager villager = helper.spawnWithNoFreeWill(EntityType.VILLAGER, 8, 1, 8);
+        villager.getBrain().setMemory(MemoryModuleType.HOME,
+                GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(5, 1, 6))));
+        HomeScanner.Result home = HomeScanner.findHome(helper.getLevel(), villager, HappinessManager.get(villager));
+        check(helper, !home.enclosed() && home.skyAccess(), "a bed out in the open is not a home");
         helper.succeed();
     }
 

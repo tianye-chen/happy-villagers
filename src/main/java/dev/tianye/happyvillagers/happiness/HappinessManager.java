@@ -22,6 +22,11 @@ public final class HappinessManager {
     /** Villager entity event that spawns angry-villager particles. */
     private static final byte ANGRY_PARTICLES = 13;
     private static final double STRIKE_WITNESS_RADIUS = 32.0;
+    private static final int FIRST_EVALUATION_SPREAD = 40;
+
+    /** Evaluations run so far in {@link #budgetTick}; server thread only. */
+    private static int budgetTick = -1;
+    private static int budgetUsed;
 
     private HappinessManager() {}
 
@@ -41,9 +46,15 @@ public final class HappinessManager {
         }
 
         boolean changed = false;
-        int interval = HappyConfig.EVALUATION_INTERVAL.get();
-        // Stagger villagers by entity id so a village doesn't flood fill on the same tick.
-        if (!data.isEvaluated() || (villager.tickCount + villager.getId()) % interval == 0) {
+        // Stagger villagers by entity id so a village doesn't flood fill on the same tick; that includes the first
+        // evaluation after a chunk loads, which is spread over FIRST_EVALUATION_SPREAD ticks.
+        boolean scheduled = data.isEvaluated()
+                ? (villager.tickCount + villager.getId()) % HappyConfig.EVALUATION_INTERVAL.get() == 0
+                : villager.tickCount >= Math.floorMod(villager.getId(), FIRST_EVALUATION_SPREAD);
+        if (scheduled) {
+            data.markEvaluationDue();
+        }
+        if (data.isEvaluationDue() && tryUseBudget(level)) {
             HappinessCalculator.evaluate(level, villager, data);
             changed = true;
         }
@@ -61,6 +72,20 @@ public final class HappinessManager {
                 HappinessPayload.sendTo(player, villager, data);
             }
         }
+    }
+
+    /** Caps how many villagers are evaluated per server tick (across all dimensions). */
+    private static boolean tryUseBudget(ServerLevel level) {
+        int tick = level.getServer().getTickCount();
+        if (tick != budgetTick) {
+            budgetTick = tick;
+            budgetUsed = 0;
+        }
+        if (budgetUsed >= HappyConfig.MAX_EVALUATIONS_PER_TICK.get()) {
+            return false;
+        }
+        budgetUsed++;
+        return true;
     }
 
     private static void drift(HappinessData data) {

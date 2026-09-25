@@ -1,10 +1,12 @@
 package dev.tianye.happyvillagers.trade;
 
 import dev.tianye.happyvillagers.HappyConfig;
+import dev.tianye.happyvillagers.happiness.HappinessCalculator;
 import dev.tianye.happyvillagers.happiness.HappinessData;
 import dev.tianye.happyvillagers.happiness.HappinessManager;
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerData;
 import net.minecraft.world.item.trading.MerchantOffer;
@@ -45,6 +47,10 @@ public final class HappyTrading {
     public static void beginSession(Villager villager) {
         endSession(villager);
         HappinessData data = HappinessManager.get(villager);
+        if (!data.isEvaluated() && villager.level() instanceof ServerLevel level) {
+            // Opened before its first (staggered) evaluation: do it now so the screen shows real factors.
+            HappinessCalculator.evaluate(level, villager, data);
+        }
         double happiness = data.happiness();
         MerchantOffers offers = villager.getOffers();
         List<MerchantOffer> base = new ArrayList<>(offers);

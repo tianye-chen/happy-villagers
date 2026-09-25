@@ -6,8 +6,6 @@ import dev.tianye.happyvillagers.mixin.VillagerAccessor;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -17,12 +15,7 @@ import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.raid.Raid;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.Container;
-import net.minecraft.world.RandomizableContainer;
 import net.minecraft.world.entity.npc.Villager;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.chunk.LevelChunk;
 
 /** Works out a villager's target happiness and the factors behind it. */
 public final class HappinessCalculator {
@@ -60,7 +53,7 @@ public final class HappinessCalculator {
         }
 
         addFlag(factors, hasSocialized(level, villager, data), "social", "lonely", HappyConfig.SOCIAL_BONUS.get());
-        addFlag(factors, hasFood(level, villager), "food", "hungry", HappyConfig.FOOD_BONUS.get());
+        addFlag(factors, FoodSearch.hasFood(level, villager), "food", "hungry", HappyConfig.FOOD_BONUS.get());
 
         int light = level.getMaxLocalRawBrightness(villager.blockPosition());
         double lightScore = (light - HappyConfig.LIGHT_NEUTRAL.get()) * HappyConfig.LIGHT_PER_LEVEL.get();
@@ -165,46 +158,4 @@ public final class HappinessCalculator {
         return last > 0 && now >= last && now - last <= HappyConfig.SOCIAL_MEMORY_TICKS.get();
     }
 
-    private static boolean hasFood(ServerLevel level, Villager villager) {
-        if (containsFood(villager.getInventory())) {
-            return true;
-        }
-        int radius = HappyConfig.FOOD_SEARCH_RADIUS.get();
-        if (radius <= 0) {
-            return false;
-        }
-        BlockPos center = villager.blockPosition();
-        long radiusSq = (long) radius * radius;
-        for (int cx = SectionPos.blockToSectionCoord(center.getX() - radius); cx <= SectionPos.blockToSectionCoord(center.getX() + radius); cx++) {
-            for (int cz = SectionPos.blockToSectionCoord(center.getZ() - radius); cz <= SectionPos.blockToSectionCoord(center.getZ() + radius); cz++) {
-                LevelChunk chunk = level.getChunkSource().getChunkNow(cx, cz);
-                if (chunk == null) {
-                    continue;
-                }
-                for (BlockEntity be : chunk.getBlockEntities().values()) {
-                    if (!(be instanceof Container container) || be.getBlockPos().distSqr(center) > radiusSq) {
-                        continue;
-                    }
-                    // Don't roll unopened loot chests just by looking at them.
-                    if (be instanceof RandomizableContainer loot && loot.getLootTable() != null) {
-                        continue;
-                    }
-                    if (containsFood(container)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    private static boolean containsFood(Container container) {
-        for (int i = 0; i < container.getContainerSize(); i++) {
-            ItemStack stack = container.getItem(i);
-            if (!stack.isEmpty() && (stack.has(DataComponents.FOOD) || Villager.FOOD_POINTS.containsKey(stack.getItem()))) {
-                return true;
-            }
-        }
-        return false;
-    }
 }

@@ -14,6 +14,7 @@ public final class HappyConfig {
     public static final ModConfigSpec.DoubleValue INITIAL_HAPPINESS;
     public static final ModConfigSpec.DoubleValue CHANGE_PER_MINUTE;
     public static final ModConfigSpec.IntValue EVALUATION_INTERVAL;
+    public static final ModConfigSpec.IntValue MAX_EVALUATIONS_PER_TICK;
 
     // ---------------------------------------------------------------- living area
     public static final ModConfigSpec.IntValue NEUTRAL_VOLUME;
@@ -39,6 +40,7 @@ public final class HappyConfig {
     public static final ModConfigSpec.IntValue SOCIAL_MEMORY_TICKS;
     public static final ModConfigSpec.DoubleValue FOOD_BONUS;
     public static final ModConfigSpec.IntValue FOOD_SEARCH_RADIUS;
+    public static final ModConfigSpec.IntValue FOOD_MAX_CONTAINERS;
     public static final ModConfigSpec.IntValue LIGHT_NEUTRAL;
     public static final ModConfigSpec.DoubleValue LIGHT_PER_LEVEL;
     public static final ModConfigSpec.DoubleValue SKY_ACCESS_BONUS;
@@ -88,6 +90,10 @@ public final class HappyConfig {
         EVALUATION_INTERVAL = BUILDER
                 .comment("Ticks between re-evaluations of a villager's surroundings (flood fill, food, light...). 20 ticks = 1 second.")
                 .defineInRange("evaluationIntervalTicks", 200, 20, 72000);
+        MAX_EVALUATIONS_PER_TICK = BUILDER
+                .comment("Most villager evaluations run in a single server tick. Villagers over the limit wait for the next tick,",
+                        "so loading a large village spreads its work out instead of causing a lag spike.")
+                .defineInRange("maxEvaluationsPerTick", 8, 1, 10000);
         BUILDER.pop();
 
         BUILDER.comment("Living area is measured by flood filling the air around the villager.",
@@ -133,6 +139,9 @@ public final class HappyConfig {
                 .defineInRange("foodBonus", 1.5, -10.0, 10.0);
         FOOD_SEARCH_RADIUS = BUILDER.comment("Radius (blocks) searched for storage containers holding food.")
                 .defineInRange("foodSearchRadius", 8, 0, 32);
+        FOOD_MAX_CONTAINERS = BUILDER.comment("Most containers checked for food, nearest first. Results are cached for evaluationIntervalTicks",
+                        "and shared by all villagers.")
+                .defineInRange("foodMaxContainers", 32, 1, 1024);
         LIGHT_NEUTRAL = BUILDER.comment("Light level at the villager that counts as neutral. Factor = (light - lightNeutral) * lightPerLevel.")
                 .defineInRange("lightNeutral", 7, 0, 15);
         LIGHT_PER_LEVEL = BUILDER.comment("Happiness per light level above/below lightNeutral.")

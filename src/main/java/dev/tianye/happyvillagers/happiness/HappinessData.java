@@ -38,6 +38,7 @@ public class HappinessData {
     // Transient, recomputed by HappinessCalculator
     private double target;
     private boolean evaluated;
+    private boolean evaluationDue;
     private boolean homeless;
     private List<HappinessFactor> factors = List.of();
 
@@ -135,6 +136,15 @@ public class HappinessData {
         this.lastRaidId = raidId;
     }
 
+    /** An evaluation is scheduled but hasn't run yet (e.g. the per-tick budget was used up). */
+    public boolean isEvaluationDue() {
+        return evaluationDue;
+    }
+
+    public void markEvaluationDue() {
+        this.evaluationDue = true;
+    }
+
     public boolean isEvaluated() {
         return evaluated;
     }
@@ -152,6 +162,7 @@ public class HappinessData {
         this.homeless = homeless;
         this.factors = List.copyOf(new ArrayList<>(factors));
         this.evaluated = true;
+        this.evaluationDue = false;
     }
 
     public static double round(double value) {
