@@ -124,6 +124,51 @@ public class HappinessGameTests {
         helper.succeed();
     }
 
+    private static void moveTo(GameTestHelper helper, Villager villager, int x, int y, int z) {
+        BlockPos pos = helper.absolutePos(new BlockPos(x, y, z));
+        villager.teleportTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true)
+    public static void wanderingOutsideKeepsHome(GameTestHelper helper) {
+        buildFloor(helper);
+        buildRoom(helper);
+        Villager villager = helper.spawnWithNoFreeWill(EntityType.VILLAGER, 3, 1, 3);
+        HappinessData data = HappinessManager.get(villager);
+
+        HomeScanner.Result inside = HomeScanner.findHome(helper.getLevel(), villager, data);
+        check(helper, inside.enclosed() && data.homeAnchor().isPresent(), "home should be found and remembered while inside");
+
+        moveTo(helper, villager, 12, 1, 12);
+        HomeScanner.Result outside = HomeScanner.findHome(helper.getLevel(), villager, data);
+        check(helper, outside.enclosed() && outside.volume() == 75,
+                "a villager out in the field still has its home, got enclosed=" + outside.enclosed() + " volume=" + outside.volume());
+
+        helper.setBlock(new BlockPos(6, 1, 3), Blocks.AIR);
+        helper.setBlock(new BlockPos(6, 2, 3), Blocks.AIR);
+        HomeScanner.Result broken = HomeScanner.findHome(helper.getLevel(), villager, data);
+        check(helper, !broken.enclosed(), "an opened-up home no longer counts");
+        check(helper, data.homeAnchor().isEmpty(), "the broken home should be forgotten");
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true)
+    public static void claimedBedAnchorsHome(GameTestHelper helper) {
+        buildFloor(helper);
+        buildRoom(helper);
+        helper.setBlock(new BlockPos(5, 1, 4), Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING, Direction.SOUTH).setValue(BedBlock.PART, BedPart.FOOT));
+        helper.setBlock(new BlockPos(5, 1, 5), Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING, Direction.SOUTH).setValue(BedBlock.PART, BedPart.HEAD));
+        Villager villager = helper.spawnWithNoFreeWill(EntityType.VILLAGER, 12, 1, 12);
+        villager.getBrain().setMemory(MemoryModuleType.HOME,
+                GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(5, 1, 5))));
+
+        HomeScanner.Result home = HomeScanner.findHome(helper.getLevel(), villager, HappinessManager.get(villager));
+        check(helper, home.enclosed() && home.bed() && home.volume() == 73,
+                "the claimed bed's room is home even though the villager never stood in it, got enclosed="
+                        + home.enclosed() + " bed=" + home.bed() + " volume=" + home.volume());
+        helper.succeed();
+    }
+
     @GameTest(template = EMPTY, skyAccess = true)
     public static void tinyCellIsPenalised(GameTestHelper helper) {
         // 1x1x2 cell, typical of a trading hall

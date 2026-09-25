@@ -21,7 +21,7 @@ public final class HappinessCalculator {
 
     public static void evaluate(ServerLevel level, Villager villager, HappinessData data) {
         List<HappinessFactor> factors = new ArrayList<>();
-        HomeScanner.Result home = HomeScanner.scan(level, villager);
+        HomeScanner.Result home = HomeScanner.findHome(level, villager, data);
 
         if (home.enclosed()) {
             factors.add(HappinessFactor.of("area", areaScore(home.volume()), home.volume()));

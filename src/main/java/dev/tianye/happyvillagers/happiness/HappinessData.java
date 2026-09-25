@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import net.minecraft.core.GlobalPos;
+import org.jetbrains.annotations.Nullable;
 
 /** Per-villager happiness state, stored as a NeoForge data attachment. */
 public class HappinessData {
@@ -14,7 +17,8 @@ public class HappinessData {
             Codec.BOOL.optionalFieldOf("initialized", false).forGetter(d -> d.initialized),
             Codec.BOOL.optionalFieldOf("quit", false).forGetter(d -> d.quit),
             Codec.LONG.optionalFieldOf("last_social", 0L).forGetter(d -> d.lastSocialTime),
-            Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("bonus_uses", Map.of()).forGetter(d -> d.bonusUses)
+            Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("bonus_uses", Map.of()).forGetter(d -> d.bonusUses),
+            GlobalPos.CODEC.optionalFieldOf("home").forGetter(d -> d.homeAnchor)
     ).apply(i, HappinessData::new));
 
     // Persisted
@@ -23,6 +27,8 @@ public class HappinessData {
     private boolean quit;
     private long lastSocialTime;
     private final Map<String, Integer> bonusUses;
+    /** Last spot the villager was seen in an enclosed space, used to find its home while it is outside. */
+    private Optional<GlobalPos> homeAnchor;
 
     // Transient, recomputed by HappinessCalculator
     private double target;
@@ -31,16 +37,18 @@ public class HappinessData {
     private List<HappinessFactor> factors = List.of();
 
     public HappinessData() {
-        this(5.0, false, false, 0L, Map.of());
+        this(5.0, false, false, 0L, Map.of(), Optional.empty());
     }
 
-    private HappinessData(double happiness, boolean initialized, boolean quit, long lastSocialTime, Map<String, Integer> bonusUses) {
+    private HappinessData(double happiness, boolean initialized, boolean quit, long lastSocialTime, Map<String, Integer> bonusUses,
+                          Optional<GlobalPos> homeAnchor) {
         this.happiness = happiness;
         this.target = happiness;
         this.initialized = initialized;
         this.quit = quit;
         this.lastSocialTime = lastSocialTime;
         this.bonusUses = new HashMap<>(bonusUses);
+        this.homeAnchor = homeAnchor;
     }
 
     /** Raw happiness with full precision; drift works on this value. */
@@ -87,6 +95,14 @@ public class HappinessData {
 
     public Map<String, Integer> bonusUses() {
         return bonusUses;
+    }
+
+    public Optional<GlobalPos> homeAnchor() {
+        return homeAnchor;
+    }
+
+    public void setHomeAnchor(@Nullable GlobalPos anchor) {
+        this.homeAnchor = Optional.ofNullable(anchor);
     }
 
     public boolean isEvaluated() {

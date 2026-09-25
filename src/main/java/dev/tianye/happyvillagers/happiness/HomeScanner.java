@@ -44,14 +44,59 @@ public final class HomeScanner {
     public record Result(boolean enclosed, int volume, boolean roof, boolean bed, int doors, int windows,
                          int greenery, boolean skyAccess) {}
 
+    /**
+     * Finds the villager's home even while it is out and about. Tries, in order:
+     * <ol>
+     *   <li>its claimed bed (vanilla {@link MemoryModuleType#HOME} memory),</li>
+     *   <li>where it is standing, if that is enclosed (remembered as its home),</li>
+     *   <li>the last enclosed spot it was seen in, forgotten once that space no longer closes.</li>
+     * </ol>
+     * Only when all of these fail is the villager homeless.
+     */
+    public static Result findHome(ServerLevel level, Villager villager, HappinessData data) {
+        Optional<BlockPos> bed = claimedBed(level, villager);
+        if (bed.isPresent()) {
+            Result fromBed = scan(level, villager, bed.get());
+            if (fromBed.enclosed()) {
+                return fromBed;
+            }
+        }
+
+        BlockPos here = villager.blockPosition();
+        Result fromHere = scan(level, villager, here);
+        if (fromHere.enclosed()) {
+            data.setHomeAnchor(GlobalPos.of(level.dimension(), here));
+            return fromHere;
+        }
+
+        Optional<GlobalPos> remembered = data.homeAnchor();
+        if (remembered.isPresent() && remembered.get().dimension() == level.dimension()) {
+            BlockPos anchor = remembered.get().pos();
+            if (!level.isLoaded(anchor)) {
+                return fromHere; // can't check right now; keep the memory
+            }
+            Result fromAnchor = scan(level, villager, anchor);
+            if (fromAnchor.enclosed()) {
+                return fromAnchor;
+            }
+            data.setHomeAnchor(null);
+        }
+        return fromHere;
+    }
+
+    /** Flood fills from the villager's current position. */
     public static Result scan(ServerLevel level, Villager villager) {
+        return scan(level, villager, villager.blockPosition());
+    }
+
+    /** Flood fills from {@code feet}, which sets the floor level and the height cap. */
+    public static Result scan(ServerLevel level, Villager villager, BlockPos feet) {
         int maxVolume = HappyConfig.MAX_VOLUME.get();
-        BlockPos feet = villager.blockPosition();
         int minY = feet.getY();
         int maxY = minY + HappyConfig.MAX_HEIGHT.get() - 1;
 
         BlockPos start = feet;
-        // A sleeping villager's feet are inside its bed; start from the air above instead.
+        // A sleeping villager's feet (or a bed anchor) are inside the bed; start from the air above instead.
         if (!isPassable(level, start) && isPassable(level, start.above())) {
             start = start.above();
         }
@@ -165,18 +210,24 @@ public final class HomeScanner {
         return !columnTops.isEmpty() && covered >= columnTops.size() * HappyConfig.ROOF_COVERAGE.get();
     }
 
-    /** Uses the vanilla bed claim ({@link MemoryModuleType#HOME}); the bed must touch the home's air. */
-    private static boolean bedInside(ServerLevel level, Villager villager, LongSet interior) {
+    /** The bed this villager has claimed through the vanilla {@link MemoryModuleType#HOME} memory, if it still exists. */
+    private static Optional<BlockPos> claimedBed(ServerLevel level, Villager villager) {
         Optional<GlobalPos> home = villager.getBrain().getMemory(MemoryModuleType.HOME);
-        if (home.isEmpty() || home.get().dimension() != level.dimension()) {
-            return false;
+        if (home.isEmpty() || home.get().dimension() != level.dimension() || !level.isLoaded(home.get().pos())) {
+            return Optional.empty();
         }
         BlockPos bedPos = home.get().pos();
-        BlockState state = level.getBlockState(bedPos);
-        if (!(state.getBlock() instanceof BedBlock)) {
+        return level.getBlockState(bedPos).getBlock() instanceof BedBlock ? Optional.of(bedPos) : Optional.empty();
+    }
+
+    /** The claimed bed must touch the home's air. */
+    private static boolean bedInside(ServerLevel level, Villager villager, LongSet interior) {
+        Optional<BlockPos> bed = claimedBed(level, villager);
+        if (bed.isEmpty()) {
             return false;
         }
-        BlockPos otherHalf = bedPos.relative(BedBlock.getConnectedDirection(state));
+        BlockPos bedPos = bed.get();
+        BlockPos otherHalf = bedPos.relative(BedBlock.getConnectedDirection(level.getBlockState(bedPos)));
         return touches(interior, bedPos) || touches(interior, otherHalf);
     }
 

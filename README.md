@@ -31,6 +31,13 @@ Target = `baseHappiness` (0) + the sum of the factors below, clamped to 0–10.
 - goes up to 5 blocks high from the villager's feet;
 - stops at a 500-block cap. A villager whose fill hits the cap is **homeless**, and none of the home factors apply.
 
+The fill is anchored to the villager's home, not to wherever it is standing, so working or wandering outside doesn't make it homeless. It starts from, in order:
+1. its claimed bed;
+2. its current spot, if that is enclosed (this spot is remembered);
+3. the last enclosed spot it remembers.
+
+A remembered home is forgotten once it no longer closes, e.g. a wall is knocked out.
+
 | Factor | Value |
 |---|---|
 | Living space | 27 blocks = 0; −0.3 per block below; +0.01 per block up to 245; +0.005 per block beyond |
