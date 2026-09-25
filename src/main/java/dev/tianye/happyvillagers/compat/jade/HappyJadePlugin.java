@@ -17,5 +17,6 @@ public class HappyJadePlugin implements IWailaPlugin {
     @Override
     public void registerClient(IWailaClientRegistration registration) {
         registration.registerEntityComponent(HappinessJadeProvider.INSTANCE, Villager.class);
+        registration.addConfig(HappinessJadeProvider.DETAILS, true);
     }
 }

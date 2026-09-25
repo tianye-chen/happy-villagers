@@ -1,6 +1,7 @@
 package dev.tianye.happyvillagers.happiness;
 
 import dev.tianye.happyvillagers.HappyConfig;
+import dev.tianye.happyvillagers.ModAdvancements;
 import dev.tianye.happyvillagers.ModAttachments;
 import dev.tianye.happyvillagers.network.HappinessPayload;
 import dev.tianye.happyvillagers.trade.HappyTrading;
@@ -20,6 +21,7 @@ public final class HappinessManager {
     private static final int DRIFT_INTERVAL = 20;
     /** Villager entity event that spawns angry-villager particles. */
     private static final byte ANGRY_PARTICLES = 13;
+    private static final double STRIKE_WITNESS_RADIUS = 32.0;
 
     private HappinessManager() {}
 
@@ -102,6 +104,9 @@ public final class HappinessManager {
         data.setQuit(true);
         level.broadcastEntityEvent(villager, ANGRY_PARTICLES);
         villager.playSound(SoundEvents.VILLAGER_NO, 1.0F, 0.8F);
+        for (ServerPlayer witness : level.getEntitiesOfClass(ServerPlayer.class, villager.getBoundingBox().inflate(STRIKE_WITNESS_RADIUS))) {
+            ModAdvancements.award(witness, ModAdvancements.LABOUR_STRIKE);
+        }
     }
 
     private static void makeUnemployed(ServerLevel level, Villager villager) {

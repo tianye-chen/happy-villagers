@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:brewing_stand",
+    "#minecraft:candles",
+    "minecraft:cauldron",
+    "minecraft:water_cauldron",
+    "minecraft:enchanting_table"
+  ]
+}

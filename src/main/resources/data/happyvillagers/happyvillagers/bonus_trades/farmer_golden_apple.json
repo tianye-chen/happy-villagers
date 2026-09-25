@@ -1,0 +1,19 @@
+{
+  "profession": "minecraft:farmer",
+  "min_happiness": 8.0,
+  "min_level": 2,
+  "cost_a": {
+    "id": "minecraft:emerald",
+    "count": 10
+  },
+  "cost_b": {
+    "id": "minecraft:gold_ingot",
+    "count": 1
+  },
+  "result": {
+    "id": "minecraft:golden_apple",
+    "count": 1
+  },
+  "max_uses": 4,
+  "xp": 15
+}

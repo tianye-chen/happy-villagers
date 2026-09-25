@@ -1,6 +1,5 @@
 package dev.tianye.happyvillagers;
 
-import java.util.List;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
@@ -53,7 +52,27 @@ public final class HappyConfig {
     public static final ModConfigSpec.DoubleValue LOCK_TRADES_BELOW;
     public static final ModConfigSpec.DoubleValue QUIT_AT;
     public static final ModConfigSpec.DoubleValue REHIRE_AT;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> BONUS_TRADES;
+
+    // ---------------------------------------------------------------- mood events
+    public static final ModConfigSpec.DoubleValue HURT_BY_PLAYER;
+    public static final ModConfigSpec.IntValue HURT_BY_PLAYER_TICKS;
+    public static final ModConfigSpec.DoubleValue GRIEF;
+    public static final ModConfigSpec.IntValue GRIEF_TICKS;
+    public static final ModConfigSpec.IntValue GRIEF_RADIUS;
+    public static final ModConfigSpec.DoubleValue RAID_SAVED;
+    public static final ModConfigSpec.IntValue RAID_SAVED_TICKS;
+    public static final ModConfigSpec.DoubleValue RAID_ONGOING;
+    public static final ModConfigSpec.DoubleValue GOLEM_BONUS;
+    public static final ModConfigSpec.IntValue GOLEM_RADIUS;
+
+    // ---------------------------------------------------------------- tastes & crowding
+    public static final ModConfigSpec.DoubleValue TASTES_BONUS;
+    public static final ModConfigSpec.DoubleValue TASTES_MAX;
+    public static final ModConfigSpec.BooleanValue CROWDING_ENABLED;
+    public static final ModConfigSpec.IntValue FREE_RESIDENTS;
+
+    // ---------------------------------------------------------------- jade
+    public static final ModConfigSpec.IntValue JADE_MAX_FACTORS;
 
     static {
         BUILDER.push("general");
@@ -139,27 +158,52 @@ public final class HappyConfig {
                 .defineInRange("quitAt", 0.0, -1.0, 10.0);
         REHIRE_AT = BUILDER.comment("A villager that quit refuses to take a new job until its happiness reaches this value.")
                 .defineInRange("rehireAt", 1.0, 0.0, 10.0);
-        BONUS_TRADES = BUILDER.comment(
-                        "Extra trades unlocked by happy villagers. Format (fields separated by '|'):",
-                        "  profession | minHappiness | minLevel | costA | costB or - | result | maxUses | xp",
-                        "Items use /give syntax with an optional count in front, e.g. '24 minecraft:emerald' or",
-                        "  minecraft:enchanted_book[stored_enchantments={levels:{'minecraft:mending':1}}]")
-                .defineListAllowEmpty("bonusTrades", List.of(
-                        "minecraft:librarian | 10.0 | 1 | 24 minecraft:emerald | 1 minecraft:book | minecraft:enchanted_book[stored_enchantments={levels:{'minecraft:mending':1}}] | 3 | 30",
-                        "minecraft:librarian | 9.0 | 3 | 20 minecraft:emerald | 1 minecraft:book | minecraft:enchanted_book[stored_enchantments={levels:{'minecraft:unbreaking':3}}] | 3 | 20",
-                        "minecraft:armorer | 9.0 | 3 | 28 minecraft:emerald | - | minecraft:diamond_chestplate[enchantments={levels:{'minecraft:protection':3}}] | 2 | 30",
-                        "minecraft:toolsmith | 9.0 | 3 | 24 minecraft:emerald | - | minecraft:diamond_pickaxe[enchantments={levels:{'minecraft:efficiency':4,'minecraft:unbreaking':3}}] | 2 | 30",
-                        "minecraft:weaponsmith | 9.0 | 3 | 24 minecraft:emerald | - | minecraft:diamond_sword[enchantments={levels:{'minecraft:sharpness':4}}] | 2 | 30",
-                        "minecraft:fletcher | 9.0 | 3 | 20 minecraft:emerald | - | minecraft:crossbow[enchantments={levels:{'minecraft:multishot':1,'minecraft:quick_charge':3}}] | 2 | 30",
-                        "minecraft:fisherman | 9.0 | 3 | 20 minecraft:emerald | - | minecraft:fishing_rod[enchantments={levels:{'minecraft:luck_of_the_sea':3,'minecraft:lure':3}}] | 2 | 30",
-                        "minecraft:farmer | 8.0 | 2 | 10 minecraft:emerald | 1 minecraft:gold_ingot | 1 minecraft:golden_apple | 4 | 15",
-                        "minecraft:cleric | 10.0 | 5 | 40 minecraft:emerald | - | 1 minecraft:totem_of_undying | 1 | 30"),
-                        () -> "minecraft:none | 10.0 | 1 | 1 minecraft:emerald | - | 1 minecraft:stick | 1 | 1",
-                        o -> o instanceof String s && s.split("\\|").length == 8);
         BUILDER.pop();
     }
 
-    public static final ModConfigSpec SPEC = BUILDER.build();
+    public static final ModConfigSpec SPEC;
+
+    static {
+        BUILDER.comment("Short-lived mood changes. Each fades linearly to 0 over its duration (ticks; 24000 = 1 day).",
+                "A repeat of the same event refreshes it instead of stacking.").push("moodEvents");
+        HURT_BY_PLAYER = BUILDER.comment("Happiness change when a player hurts the villager.")
+                .defineInRange("hurtByPlayer", -1.5, -10.0, 10.0);
+        HURT_BY_PLAYER_TICKS = BUILDER.defineInRange("hurtByPlayerTicks", 24000, 20, Integer.MAX_VALUE);
+        GRIEF = BUILDER.comment("Happiness change when the villager sees another villager die.")
+                .defineInRange("grief", -2.0, -10.0, 10.0);
+        GRIEF_TICKS = BUILDER.defineInRange("griefTicks", 48000, 20, Integer.MAX_VALUE);
+        GRIEF_RADIUS = BUILDER.comment("How far away (blocks) a death can be seen.").defineInRange("griefRadius", 16, 1, 64);
+        RAID_SAVED = BUILDER.comment("Happiness change after a raid on the village is defeated.")
+                .defineInRange("raidSaved", 1.5, -10.0, 10.0);
+        RAID_SAVED_TICKS = BUILDER.defineInRange("raidSavedTicks", 48000, 20, Integer.MAX_VALUE);
+        RAID_ONGOING = BUILDER.comment("Happiness change while a raid is in progress around the villager.")
+                .defineInRange("raidOngoing", -1.0, -10.0, 10.0);
+        GOLEM_BONUS = BUILDER.comment("Bonus while an iron golem is nearby to protect the villager.")
+                .defineInRange("golemBonus", 0.5, -10.0, 10.0);
+        GOLEM_RADIUS = BUILDER.defineInRange("golemRadius", 16, 1, 64);
+        BUILDER.pop();
+
+        BUILDER.comment("Villagers like blocks that suit their profession in their home,",
+                "listed in the block tag #happyvillagers:tastes/<profession>, e.g. #happyvillagers:tastes/librarian.").push("tastes");
+        TASTES_BONUS = BUILDER.comment("Bonus per liked block in the home.").defineInRange("tastesBonus", 0.1, 0.0, 10.0);
+        TASTES_MAX = BUILDER.comment("Maximum total tastes bonus.").defineInRange("tastesMax", 0.5, 0.0, 10.0);
+        BUILDER.pop();
+
+        BUILDER.comment("Villagers living in the same home share its space. Residents are villagers standing in the home",
+                "or whose claimed bed is in it.").push("crowding");
+        CROWDING_ENABLED = BUILDER.define("enabled", true);
+        FREE_RESIDENTS = BUILDER.comment("Residents that can share a home without penalty. Above this, each villager's living space",
+                        "counts as volume * freeResidents / residents.")
+                .defineInRange("freeResidents", 2, 1, 20);
+        BUILDER.pop();
+
+        BUILDER.push("jade");
+        JADE_MAX_FACTORS = BUILDER.comment("How many factors Jade lists while its details key (Shift) is held.")
+                .defineInRange("jadeMaxFactors", 5, 0, 32);
+        BUILDER.pop();
+
+        SPEC = BUILDER.build();
+    }
 
     private HappyConfig() {}
 }

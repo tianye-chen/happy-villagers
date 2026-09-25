@@ -1,0 +1,23 @@
+{
+  "profession": "minecraft:fisherman",
+  "min_happiness": 9.0,
+  "min_level": 3,
+  "cost_a": {
+    "id": "minecraft:emerald",
+    "count": 20
+  },
+  "result": {
+    "id": "minecraft:fishing_rod",
+    "count": 1,
+    "components": {
+      "minecraft:enchantments": {
+        "levels": {
+          "minecraft:luck_of_the_sea": 3,
+          "minecraft:lure": 3
+        }
+      }
+    }
+  },
+  "max_uses": 2,
+  "xp": 30
+}

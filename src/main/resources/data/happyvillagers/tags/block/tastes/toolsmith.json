@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:smithing_table",
+    "minecraft:anvil",
+    "minecraft:grindstone"
+  ]
+}

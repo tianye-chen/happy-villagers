@@ -1,0 +1,23 @@
+{
+  "parent": "minecraft:adventure/trade",
+  "display": {
+    "icon": {
+      "id": "minecraft:emerald"
+    },
+    "title": {
+      "translate": "advancements.happyvillagers.customer_service.title"
+    },
+    "description": {
+      "translate": "advancements.happyvillagers.customer_service.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "trigger": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

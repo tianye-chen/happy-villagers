@@ -9,7 +9,7 @@ A NeoForge mod for Minecraft **1.21.1** (NeoForge 21.1.251) that gives every vil
   - whether happiness is rising or falling, and toward what target
   - every factor (lime = positive, red = negative or missing)
   - the current price change, withheld trades and bonus trades
-- **Jade**: looking at a villager shows `♥ 7.3 Happy` (toggle: *Villager Happiness* in Jade's plugin settings).
+- **Jade**: looking at a villager shows `♥ 7.3 Happy`. Hold Shift (Jade's details key) to also see the trend and its biggest factors. Both have toggles in Jade's plugin settings.
 - Happiness moves toward its target at **0.2 per minute**. Surroundings are re-evaluated every 10 s.
 
 | Happiness | Mood | Trading |
@@ -50,19 +50,55 @@ A remembered home is forgotten once it no longer closes, e.g. a wall is knocked 
 | Food in the villager's inventory or a container within 8 blocks | +1.5 |
 | Light level at the villager | (light − 7) × 0.1 |
 | Can reach open sky through a door or 2+ tall opening | +0.5 |
+| Home contains blocks its profession likes (`#happyvillagers:tastes/<profession>`, e.g. bookshelves for librarians) | +0.1 each, max +0.5 |
+| Crowding: more than 2 villagers live in the home (standing in it or with their bed there) | living space counts as `volume × 2 / residents` |
+| Iron golem within 16 blocks | +0.5 |
+| Raid in progress | −1.0 |
+
+**Mood events** are short-lived: each fades linearly to nothing, and a repeat refreshes it rather than stacking.
+
+| Event | Value | Lasts |
+|---|---|---|
+| Hurt by a player | −1.5 | 1 day |
+| Saw a villager die (within 16 blocks, line of sight) | −2.0 | 2 days |
+| Village saved from a raid | +1.5 | 2 days |
 
 A lit 5×5 house with a bed, door, windows, a plant, food and neighbours lands around 7–8; a 7×7 house pushes it past 9. A homeless villager with food and neighbours sits around 4 (Grumpy); without them it sits near 1. A 1×1 trading-hall cell drops to 0.
 
 ## Config
 
-`config/happyvillagers-common.toml` is created on first launch. Every number above can be changed there, and so can the bonus trade list. Bonus trades use `/give` item syntax:
+`config/happyvillagers-common.toml` is created on first launch. Every number above can be changed there.
 
-```
-profession | minHappiness | minLevel | costA | costB or - | result | maxUses | xp
-minecraft:librarian | 10.0 | 1 | 24 minecraft:emerald | 1 minecraft:book | minecraft:enchanted_book[stored_enchantments={levels:{'minecraft:mending':1}}] | 3 | 30
+Mood names are in `assets/happyvillagers/lang/en_us.json`. Profession tastes are the block tags `data/happyvillagers/tags/block/tastes/<profession>.json`; modded professions use `tastes/<namespace>/<profession>`.
+
+### Bonus trades (datapack)
+
+Bonus trades are JSON files in `data/<namespace>/happyvillagers/bonus_trades/`. The file id (e.g. `happyvillagers:librarian_mending`) is the trade's key. A datapack can add new files, or override the mod's by using the same path. `/reload` applies changes.
+
+```json
+{
+  "profession": "minecraft:librarian",
+  "min_happiness": 10.0,
+  "min_level": 1,
+  "cost_a": { "id": "minecraft:emerald", "count": 24 },
+  "cost_b": { "id": "minecraft:book", "count": 1 },
+  "result": {
+    "id": "minecraft:enchanted_book",
+    "components": { "minecraft:stored_enchantments": { "levels": { "minecraft:mending": 1 } } }
+  },
+  "max_uses": 3,
+  "xp": 30
+}
 ```
 
-Mood names are in `assets/happyvillagers/lang/en_us.json`.
+`cost_b`, `min_level` (default 1) and `xp` (default 0) are optional. Default trades cover the librarian (Mending, Unbreaking III), armorer, toolsmith, weaponsmith, fletcher, fisherman, farmer (golden apple) and cleric (totem).
+
+## Advancements
+
+Under the Adventure tab, after *What a Deal!*:
+- **Customer Service**: trade with an Ecstatic villager.
+- **Mending, Finally**: buy the happiness-10 Mending book.
+- **Labour Strike**: be nearby when a villager quits its job.
 
 ## How trades are changed
 
@@ -74,9 +110,9 @@ Requires **JDK 21** (for example `brew install --cask temurin@21`).
 
 ```sh
 export JAVA_HOME=$(/usr/libexec/java_home -v 21)
-./gradlew build              # -> build/libs/happyvillagers-1.0.1.jar
+./gradlew build              # -> build/libs/happyvillagers-1.1.0.jar
 ./gradlew runClient          # dev client with Jade
-./gradlew runGameTestServer  # 10 in-world tests (home detection, trading, quitting, config parsing)
+./gradlew runGameTestServer  # 15 in-world tests (homes, trading, quitting, mood events, tastes, crowding, advancements)
 ```
 
 Jade is optional at runtime. It is compiled against and loaded in dev runs only.

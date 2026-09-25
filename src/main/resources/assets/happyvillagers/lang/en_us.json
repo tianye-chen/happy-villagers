@@ -6,7 +6,6 @@
   "happyvillagers.tooltip.prices": "Prices: %s",
   "happyvillagers.tooltip.locked": "%s trade(s) withheld",
   "happyvillagers.tooltip.bonus": "%s bonus trade(s) unlocked",
-
   "happyvillagers.level.severely_depressed": "Severely Depressed",
   "happyvillagers.level.depressed": "Depressed",
   "happyvillagers.level.miserable": "Miserable",
@@ -19,7 +18,6 @@
   "happyvillagers.level.very_happy": "Very Happy",
   "happyvillagers.level.potential_man": "Potential Man",
   "happyvillagers.level.ecstatic": "Ecstatic",
-
   "happyvillagers.factor.area": "Living space (%s blocks)",
   "happyvillagers.factor.homeless": "Homeless: no enclosed home",
   "happyvillagers.factor.roof": "Roof over head",
@@ -40,7 +38,22 @@
   "happyvillagers.factor.dark": "Too dark (light %s)",
   "happyvillagers.factor.sky": "Can get outside",
   "happyvillagers.factor.no_sky": "Shut in: no way outside",
-
   "happyvillagers.jade.quit": "Quit their job",
-  "config.jade.plugin_happyvillagers.happiness": "Villager Happiness"
+  "config.jade.plugin_happyvillagers.happiness": "Villager Happiness",
+  "happyvillagers.factor.crowded": "Crowded home (%s residents)",
+  "happyvillagers.factor.tastes": "Home suits its trade (%s)",
+  "happyvillagers.factor.no_tastes": "Nothing from its trade at home",
+  "happyvillagers.factor.golem": "Protected by an iron golem",
+  "happyvillagers.factor.raid_ongoing": "Village under attack!",
+  "happyvillagers.factor.hurt_by_player": "Hurt by a player (%s min left)",
+  "happyvillagers.factor.grief": "Saw a villager die (%s min left)",
+  "happyvillagers.factor.raid_saved": "Village saved from a raid (%s min left)",
+  "happyvillagers.jade.details_hint": "Hold Shift for happiness details",
+  "config.jade.plugin_happyvillagers.happiness_details": "Villager Happiness: details on Shift",
+  "advancements.happyvillagers.customer_service.title": "Customer Service",
+  "advancements.happyvillagers.customer_service.description": "Trade with an Ecstatic villager",
+  "advancements.happyvillagers.mending_finally.title": "Mending, Finally",
+  "advancements.happyvillagers.mending_finally.description": "Buy a Mending book from a villager who couldn't be happier",
+  "advancements.happyvillagers.labour_strike.title": "Labour Strike",
+  "advancements.happyvillagers.labour_strike.description": "Make a villager so miserable they quit their job"
 }

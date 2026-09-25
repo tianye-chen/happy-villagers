@@ -1,0 +1,23 @@
+{
+  "profession": "minecraft:toolsmith",
+  "min_happiness": 9.0,
+  "min_level": 3,
+  "cost_a": {
+    "id": "minecraft:emerald",
+    "count": 24
+  },
+  "result": {
+    "id": "minecraft:diamond_pickaxe",
+    "count": 1,
+    "components": {
+      "minecraft:enchantments": {
+        "levels": {
+          "minecraft:efficiency": 4,
+          "minecraft:unbreaking": 3
+        }
+      }
+    }
+  },
+  "max_uses": 2,
+  "xp": 30
+}

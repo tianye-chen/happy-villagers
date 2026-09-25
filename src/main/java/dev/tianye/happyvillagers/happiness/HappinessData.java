@@ -18,7 +18,9 @@ public class HappinessData {
             Codec.BOOL.optionalFieldOf("quit", false).forGetter(d -> d.quit),
             Codec.LONG.optionalFieldOf("last_social", 0L).forGetter(d -> d.lastSocialTime),
             Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("bonus_uses", Map.of()).forGetter(d -> d.bonusUses),
-            GlobalPos.CODEC.optionalFieldOf("home").forGetter(d -> d.homeAnchor)
+            GlobalPos.CODEC.optionalFieldOf("home").forGetter(d -> d.homeAnchor),
+            MoodEvent.CODEC.listOf().optionalFieldOf("events", List.of()).forGetter(d -> d.events),
+            Codec.INT.optionalFieldOf("last_raid", 0).forGetter(d -> d.lastRaidId)
     ).apply(i, HappinessData::new));
 
     // Persisted
@@ -29,6 +31,9 @@ public class HappinessData {
     private final Map<String, Integer> bonusUses;
     /** Last spot the villager was seen in an enclosed space, used to find its home while it is outside. */
     private Optional<GlobalPos> homeAnchor;
+    private final List<MoodEvent> events;
+    /** Id of the last raid this villager celebrated surviving, so a victory only counts once. */
+    private int lastRaidId;
 
     // Transient, recomputed by HappinessCalculator
     private double target;
@@ -37,11 +42,11 @@ public class HappinessData {
     private List<HappinessFactor> factors = List.of();
 
     public HappinessData() {
-        this(5.0, false, false, 0L, Map.of(), Optional.empty());
+        this(5.0, false, false, 0L, Map.of(), Optional.empty(), List.of(), 0);
     }
 
     private HappinessData(double happiness, boolean initialized, boolean quit, long lastSocialTime, Map<String, Integer> bonusUses,
-                          Optional<GlobalPos> homeAnchor) {
+                          Optional<GlobalPos> homeAnchor, List<MoodEvent> events, int lastRaidId) {
         this.happiness = happiness;
         this.target = happiness;
         this.initialized = initialized;
@@ -49,6 +54,8 @@ public class HappinessData {
         this.lastSocialTime = lastSocialTime;
         this.bonusUses = new HashMap<>(bonusUses);
         this.homeAnchor = homeAnchor;
+        this.events = new ArrayList<>(events);
+        this.lastRaidId = lastRaidId;
     }
 
     /** Raw happiness with full precision; drift works on this value. */
@@ -103,6 +110,29 @@ public class HappinessData {
 
     public void setHomeAnchor(@Nullable GlobalPos anchor) {
         this.homeAnchor = Optional.ofNullable(anchor);
+    }
+
+    /** Active mood events; call {@link #pruneEvents} first to drop expired ones. */
+    public List<MoodEvent> events() {
+        return events;
+    }
+
+    /** Adds a mood event, replacing (refreshing) any earlier event with the same id. */
+    public void addEvent(String id, double value, long now, long duration) {
+        events.removeIf(e -> e.id().equals(id));
+        events.add(new MoodEvent(id, value, now, duration));
+    }
+
+    public void pruneEvents(long now) {
+        events.removeIf(e -> e.isExpired(now));
+    }
+
+    public int lastRaidId() {
+        return lastRaidId;
+    }
+
+    public void setLastRaidId(int raidId) {
+        this.lastRaidId = raidId;
     }
 
     public boolean isEvaluated() {

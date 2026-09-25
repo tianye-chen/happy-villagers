@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:smoker",
+    "minecraft:campfire",
+    "minecraft:hay_block",
+    "minecraft:barrel"
+  ]
+}

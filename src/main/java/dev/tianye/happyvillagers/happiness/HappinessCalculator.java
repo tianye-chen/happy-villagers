@@ -1,12 +1,21 @@
 package dev.tianye.happyvillagers.happiness;
 
 import dev.tianye.happyvillagers.HappyConfig;
+import dev.tianye.happyvillagers.HappyVillagers;
 import dev.tianye.happyvillagers.mixin.VillagerAccessor;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.animal.IronGolem;
+import net.minecraft.world.entity.npc.VillagerProfession;
+import net.minecraft.world.entity.raid.Raid;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.RandomizableContainer;
@@ -25,6 +34,11 @@ public final class HappinessCalculator {
 
         if (home.enclosed()) {
             factors.add(HappinessFactor.of("area", areaScore(home.volume()), home.volume()));
+            int freeResidents = HappyConfig.FREE_RESIDENTS.get();
+            if (HappyConfig.CROWDING_ENABLED.get() && home.residents() > freeResidents) {
+                int shared = home.volume() * freeResidents / home.residents();
+                factors.add(HappinessFactor.of("crowded", areaScore(shared) - areaScore(home.volume()), home.residents()));
+            }
             addFlag(factors, home.roof(), "roof", "no_roof", HappyConfig.ROOF_BONUS.get());
             addFlag(factors, home.bed(), "bed", "no_bed", HappyConfig.BED_BONUS.get());
             addFlag(factors, home.doors() > 0, "door", "no_door", HappyConfig.DOOR_BONUS.get());
@@ -40,6 +54,7 @@ public final class HappinessCalculator {
             } else {
                 factors.add(HappinessFactor.missing("no_greenery"));
             }
+            addTastes(level, villager, home, factors);
         } else {
             factors.add(HappinessFactor.missing("homeless"));
         }
@@ -58,11 +73,67 @@ public final class HappinessCalculator {
             factors.add(penalty > 0 ? HappinessFactor.of("no_sky", -penalty, 0) : HappinessFactor.missing("no_sky"));
         }
 
+        addSafety(level, villager, data, factors);
+        addMoodEvents(level, data, factors);
+
         double target = HappyConfig.BASE_HAPPINESS.get();
         for (HappinessFactor factor : factors) {
             target += factor.value();
         }
         data.applyEvaluation(target, !home.enclosed(), factors);
+    }
+
+    /** The block tag of things a profession likes to have at home: {@code #happyvillagers:tastes/<profession>}. */
+    public static TagKey<Block> tastesTag(VillagerProfession profession) {
+        ResourceLocation key = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
+        String path = key.getNamespace().equals(ResourceLocation.DEFAULT_NAMESPACE) ? key.getPath() : key.getNamespace() + "/" + key.getPath();
+        return TagKey.create(Registries.BLOCK, HappyVillagers.id("tastes/" + path));
+    }
+
+    private static void addTastes(ServerLevel level, Villager villager, HomeScanner.Result home, List<HappinessFactor> factors) {
+        VillagerProfession profession = villager.getVillagerData().getProfession();
+        if (profession == VillagerProfession.NONE || profession == VillagerProfession.NITWIT) {
+            return;
+        }
+        TagKey<Block> tag = tastesTag(profession);
+        if (BuiltInRegistries.BLOCK.getTag(tag).map(set -> set.size() == 0).orElse(true)) {
+            return; // nothing defined for this profession
+        }
+        int liked = HomeScanner.countTagged(level, home, tag);
+        if (liked > 0) {
+            factors.add(HappinessFactor.of("tastes", Math.min(HappyConfig.TASTES_MAX.get(), liked * HappyConfig.TASTES_BONUS.get()), liked));
+        } else {
+            factors.add(HappinessFactor.missing("no_tastes"));
+        }
+    }
+
+    /** Iron golems reassure villagers; raids frighten them, and surviving one is a relief. */
+    private static void addSafety(ServerLevel level, Villager villager, HappinessData data, List<HappinessFactor> factors) {
+        int golemRadius = HappyConfig.GOLEM_RADIUS.get();
+        if (!level.getEntitiesOfClass(IronGolem.class, villager.getBoundingBox().inflate(golemRadius), IronGolem::isAlive).isEmpty()) {
+            factors.add(HappinessFactor.of("golem", HappyConfig.GOLEM_BONUS.get(), 0));
+        }
+        Raid raid = level.getRaidAt(villager.blockPosition());
+        if (raid == null) {
+            return;
+        }
+        if (raid.isVictory()) {
+            if (raid.getId() != data.lastRaidId()) {
+                data.setLastRaidId(raid.getId());
+                data.addEvent(MoodEventHandler.RAID_SAVED, HappyConfig.RAID_SAVED.get(), level.getGameTime(), HappyConfig.RAID_SAVED_TICKS.get());
+            }
+        } else if (raid.isStarted() && !raid.isOver()) {
+            factors.add(HappinessFactor.of("raid_ongoing", HappyConfig.RAID_ONGOING.get(), 0));
+        }
+    }
+
+    private static void addMoodEvents(ServerLevel level, HappinessData data, List<HappinessFactor> factors) {
+        long now = level.getGameTime();
+        data.pruneEvents(now);
+        for (MoodEvent event : data.events()) {
+            int minutesLeft = (int) Math.ceil(event.remaining(now) / 1200.0);
+            factors.add(HappinessFactor.of(event.id(), event.valueAt(now), minutesLeft));
+        }
     }
 
     /** 27 blocks is neutral; -0.3 per block below, +0.01 per block up to 245, +0.005 per block beyond. */

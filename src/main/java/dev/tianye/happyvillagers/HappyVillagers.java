@@ -2,7 +2,9 @@ package dev.tianye.happyvillagers;
 
 import com.mojang.logging.LogUtils;
 import dev.tianye.happyvillagers.happiness.HappinessManager;
+import dev.tianye.happyvillagers.happiness.MoodEventHandler;
 import dev.tianye.happyvillagers.network.HappinessPayload;
+import dev.tianye.happyvillagers.trade.BonusTradeManager;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -23,6 +25,9 @@ public class HappyVillagers {
         modContainer.registerConfig(ModConfig.Type.COMMON, HappyConfig.SPEC);
 
         NeoForge.EVENT_BUS.register(HappinessManager.class);
+        NeoForge.EVENT_BUS.register(BonusTradeManager.class);
+        NeoForge.EVENT_BUS.register(MoodEventHandler.class);
+        NeoForge.EVENT_BUS.register(ModAdvancements.class);
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {

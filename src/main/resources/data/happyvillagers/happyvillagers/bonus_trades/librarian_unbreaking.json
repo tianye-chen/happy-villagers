@@ -1,0 +1,26 @@
+{
+  "profession": "minecraft:librarian",
+  "min_happiness": 9.0,
+  "min_level": 3,
+  "cost_a": {
+    "id": "minecraft:emerald",
+    "count": 20
+  },
+  "cost_b": {
+    "id": "minecraft:book",
+    "count": 1
+  },
+  "result": {
+    "id": "minecraft:enchanted_book",
+    "count": 1,
+    "components": {
+      "minecraft:stored_enchantments": {
+        "levels": {
+          "minecraft:unbreaking": 3
+        }
+      }
+    }
+  },
+  "max_uses": 3,
+  "xp": 20
+}

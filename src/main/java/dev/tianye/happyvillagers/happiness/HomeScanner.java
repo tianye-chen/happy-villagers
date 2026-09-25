@@ -5,7 +5,9 @@ import dev.tianye.happyvillagers.HappyVillagers;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.longs.LongSets;
 import java.util.ArrayDeque;
+import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -22,6 +24,7 @@ import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.neoforge.common.Tags;
 
@@ -41,8 +44,13 @@ public final class HomeScanner {
 
     private HomeScanner() {}
 
+    /**
+     * @param interior  the home's air blocks (empty when not enclosed)
+     * @param boundary  the solid blocks around it (empty when not enclosed)
+     * @param residents villagers living here, including the scanned one (at least 1)
+     */
     public record Result(boolean enclosed, int volume, boolean roof, boolean bed, int doors, int windows,
-                         int greenery, boolean skyAccess) {}
+                         int greenery, boolean skyAccess, int residents, LongSet interior, LongSet boundary) {}
 
     /**
      * Finds the villager's home even while it is out and about. Tries, in order:
@@ -151,7 +159,7 @@ public final class HomeScanner {
 
         boolean skyAccess = seesSky(level, interior) || anyDoorLeadsToSky(level, doors, interior);
         if (open) {
-            return new Result(false, interior.size(), false, false, 0, 0, 0, skyAccess);
+            return new Result(false, interior.size(), false, false, 0, 0, 0, skyAccess, 1, LongSets.EMPTY_SET, LongSets.EMPTY_SET);
         }
 
         return new Result(true, interior.size(),
@@ -160,7 +168,49 @@ public final class HomeScanner {
                 doors.size(),
                 countWindows(level, boundary),
                 countGreenery(level, interior, boundary, minY, maxY),
-                skyAccess);
+                skyAccess,
+                countResidents(level, villager, interior),
+                LongSets.unmodifiable(interior),
+                LongSets.unmodifiable(boundary));
+    }
+
+    /** Blocks of {@code tag} anywhere in the home: in its air or part of its shell. */
+    public static int countTagged(ServerLevel level, Result home, TagKey<Block> tag) {
+        int count = 0;
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (LongSet set : List.of(home.interior(), home.boundary())) {
+            for (long packed : set) {
+                if (level.getBlockState(cursor.set(packed)).is(tag)) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    /** The villager itself plus every other villager standing in the home or whose claimed bed is in it. */
+    private static int countResidents(ServerLevel level, Villager self, LongSet interior) {
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+        for (long packed : interior) {
+            int x = BlockPos.getX(packed), y = BlockPos.getY(packed), z = BlockPos.getZ(packed);
+            minX = Math.min(minX, x); minY = Math.min(minY, y); minZ = Math.min(minZ, z);
+            maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); maxZ = Math.max(maxZ, z);
+        }
+        AABB bounds = new AABB(minX, minY - 1, minZ, maxX + 1, maxY + 1, maxZ + 1).inflate(1.0);
+        int residents = 1;
+        for (Villager other : level.getEntitiesOfClass(Villager.class, bounds)) {
+            if (other == self || !other.isAlive()) {
+                continue;
+            }
+            BlockPos pos = other.blockPosition();
+            boolean inside = interior.contains(pos.asLong()) || interior.contains(pos.above().asLong());
+            Optional<BlockPos> bed = claimedBed(level, other);
+            if (inside || (bed.isPresent() && bedTouches(level, interior, bed.get()))) {
+                residents++;
+            }
+        }
+        return residents;
     }
 
     // ------------------------------------------------------------------ passability
@@ -226,7 +276,10 @@ public final class HomeScanner {
         if (bed.isEmpty()) {
             return false;
         }
-        BlockPos bedPos = bed.get();
+        return bedTouches(level, interior, bed.get());
+    }
+
+    private static boolean bedTouches(ServerLevel level, LongSet interior, BlockPos bedPos) {
         BlockPos otherHalf = bedPos.relative(BedBlock.getConnectedDirection(level.getBlockState(bedPos)));
         return touches(interior, bedPos) || touches(interior, otherHalf);
     }

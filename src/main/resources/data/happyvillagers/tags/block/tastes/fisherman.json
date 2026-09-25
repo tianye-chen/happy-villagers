@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:barrel",
+    "minecraft:water_cauldron",
+    "minecraft:sea_lantern",
+    "minecraft:dried_kelp_block"
+  ]
+}

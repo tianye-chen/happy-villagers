@@ -1,0 +1,22 @@
+{
+  "profession": "minecraft:weaponsmith",
+  "min_happiness": 9.0,
+  "min_level": 3,
+  "cost_a": {
+    "id": "minecraft:emerald",
+    "count": 24
+  },
+  "result": {
+    "id": "minecraft:diamond_sword",
+    "count": 1,
+    "components": {
+      "minecraft:enchantments": {
+        "levels": {
+          "minecraft:sharpness": 4
+        }
+      }
+    }
+  },
+  "max_uses": 2,
+  "xp": 30
+}

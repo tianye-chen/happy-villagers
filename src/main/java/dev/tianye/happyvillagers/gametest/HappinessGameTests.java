@@ -1,13 +1,16 @@
 package dev.tianye.happyvillagers.gametest;
 
-import dev.tianye.happyvillagers.HappyConfig;
+import dev.tianye.happyvillagers.ModAdvancements;
 import dev.tianye.happyvillagers.HappyVillagers;
 import dev.tianye.happyvillagers.happiness.HappinessCalculator;
 import dev.tianye.happyvillagers.happiness.HappinessData;
 import dev.tianye.happyvillagers.happiness.HappinessLevel;
 import dev.tianye.happyvillagers.happiness.HappinessManager;
 import dev.tianye.happyvillagers.happiness.HomeScanner;
+import dev.tianye.happyvillagers.happiness.HappinessFactor;
+import dev.tianye.happyvillagers.happiness.MoodEvent;
 import dev.tianye.happyvillagers.trade.BonusTrade;
+import dev.tianye.happyvillagers.trade.BonusTradeManager;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -18,6 +21,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -207,11 +211,86 @@ public class HappinessGameTests {
     }
 
     @GameTest(template = EMPTY, skyAccess = true)
-    public static void defaultBonusTradesParse(GameTestHelper helper) {
-        int configured = HappyConfig.BONUS_TRADES.get().size();
-        int parsed = BonusTrade.fromConfig(helper.getLevel().registryAccess()).size();
-        check(helper, parsed == configured, "only " + parsed + " of " + configured + " bonus trades parsed, see log");
+    public static void bonusTradesLoadFromDatapack(GameTestHelper helper) {
+        List<BonusTrade> trades = BonusTradeManager.trades();
+        check(helper, trades.size() == 9, "expected the 9 default bonus trades from the datapack, got " + trades.size());
+        check(helper, trades.stream().anyMatch(t -> t.key().equals(HappyVillagers.id("librarian_mending"))),
+                "bonus trades should be keyed by file id");
         helper.succeed();
+    }
+
+    private static HappinessFactor factor(HappinessData data, String id) {
+        return data.factors().stream().filter(f -> f.id().equals(id)).findFirst().orElse(null);
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true)
+    public static void moodEventsFadeAndExpire(GameTestHelper helper) {
+        MoodEvent event = new MoodEvent("hurt_by_player", -1.5, 1000, 24000);
+        check(helper, event.valueAt(1000) == -1.5, "full strength at the start");
+        check(helper, Math.abs(event.valueAt(13000) + 0.75) < 1e-9, "half strength halfway, got " + event.valueAt(13000));
+        check(helper, event.valueAt(25000) == 0.0 && event.isExpired(25000), "gone once expired");
+
+        buildFloor(helper);
+        Villager villager = helper.spawnWithNoFreeWill(EntityType.VILLAGER, 8, 1, 8);
+        ServerPlayer player = mockServerPlayer(helper);
+        villager.hurt(helper.getLevel().damageSources().playerAttack(player), 1.0F);
+        HappinessData data = HappinessManager.get(villager);
+        HappinessCalculator.evaluate(helper.getLevel(), villager, data);
+        HappinessFactor hurt = factor(data, "hurt_by_player");
+        check(helper, hurt != null && Math.abs(hurt.value() + 1.5) < 0.01, "being hit by a player should cost about 1.5, got " + hurt);
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true)
+    public static void librarianLikesBookshelves(GameTestHelper helper) {
+        buildRoom(helper);
+        helper.setBlock(new BlockPos(1, 1, 5), Blocks.BOOKSHELF);
+        helper.setBlock(new BlockPos(2, 1, 5), Blocks.BOOKSHELF);
+        helper.setBlock(new BlockPos(1, 2, 5), Blocks.BOOKSHELF);
+        Villager villager = helper.spawnWithNoFreeWill(EntityType.VILLAGER, 3, 1, 3);
+        villager.setVillagerData(villager.getVillagerData().setProfession(VillagerProfession.LIBRARIAN));
+        HappinessData data = HappinessManager.get(villager);
+        HappinessCalculator.evaluate(helper.getLevel(), villager, data);
+        HappinessFactor tastes = factor(data, "tastes");
+        check(helper, tastes != null && Math.abs(tastes.value() - 0.3) < 1e-9 && tastes.detail() == 3,
+                "3 bookshelves should give a librarian +0.3, got " + tastes);
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true)
+    public static void crowdingStartsAboveTwoResidents(GameTestHelper helper) {
+        buildRoom(helper);
+        Villager first = helper.spawnWithNoFreeWill(EntityType.VILLAGER, 2, 1, 2);
+        helper.spawnWithNoFreeWill(EntityType.VILLAGER, 4, 1, 4);
+        HappinessData data = HappinessManager.get(first);
+        HappinessCalculator.evaluate(helper.getLevel(), first, data);
+        check(helper, factor(data, "crowded") == null, "two villagers may share a home without penalty");
+
+        helper.spawnWithNoFreeWill(EntityType.VILLAGER, 4, 1, 2);
+        HappinessCalculator.evaluate(helper.getLevel(), first, data);
+        HappinessFactor crowded = factor(data, "crowded");
+        double expected = HappinessCalculator.areaScore(50) - HappinessCalculator.areaScore(75);
+        check(helper, crowded != null && Math.abs(crowded.value() - expected) < 1e-9 && crowded.detail() == 3,
+                "three residents should cost " + expected + ", got " + crowded);
+        helper.succeed();
+    }
+
+    /**
+     * A joined mock player. Jade's login handler tries to ping the fake connection and throws at the very end of
+     * {@code PlayerList#placeNewPlayer}, after the player is fully placed, so recover it from the player list.
+     */
+    private static ServerPlayer mockServerPlayer(GameTestHelper helper) {
+        List<ServerPlayer> players = helper.getLevel().getServer().getPlayerList().getPlayers();
+        try {
+            return helper.makeMockServerPlayerInLevel();
+        } catch (UnsupportedOperationException jadeLoginPing) {
+            return players.get(players.size() - 1);
+        }
+    }
+
+    private static boolean hasAdvancement(ServerPlayer player, String id) {
+        var holder = player.server.getAdvancements().get(HappyVillagers.id(id));
+        return holder != null && player.getAdvancements().getOrStartProgress(holder).isDone();
     }
 
     private static Villager trader(GameTestHelper helper, VillagerProfession profession, int level, double happiness) {
@@ -228,7 +307,9 @@ public class HappinessGameTests {
     public static void ecstaticLibrarianOffersMendingCheaper(GameTestHelper helper) {
         Villager villager = trader(helper, VillagerProfession.LIBRARIAN, 1, 10.0);
         List<MerchantOffer> base = new ArrayList<>(villager.getOffers());
-        Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        ServerPlayer player = mockServerPlayer(helper);
+        BlockPos near = helper.absolutePos(new BlockPos(8, 1, 7));
+        player.teleportTo(near.getX() + 0.5, near.getY(), near.getZ() + 0.5);
 
         villager.mobInteract(player, InteractionHand.MAIN_HAND); // vanilla path -> mixin starts the session
         MerchantOffers offers = villager.getOffers();
@@ -243,6 +324,10 @@ public class HappinessGameTests {
             check(helper, offer.getSpecialPriceDiff() == expected,
                     "expected price diff " + expected + " but got " + offer.getSpecialPriceDiff());
         }
+
+        villager.notifyTrade(offers.get(offers.size() - 1)); // buy the Mending book
+        check(helper, hasAdvancement(player, ModAdvancements.CUSTOMER_SERVICE), "trading at happiness 10 awards Customer Service");
+        check(helper, hasAdvancement(player, ModAdvancements.MENDING_FINALLY), "buying the bonus Mending book awards Mending, Finally");
 
         CompoundTag saved = villager.saveWithoutId(new CompoundTag());
         int savedCount = saved.getCompound("Offers").getList("Recipes", Tag.TAG_COMPOUND).size();
@@ -293,7 +378,11 @@ public class HappinessGameTests {
     @GameTest(template = EMPTY, skyAccess = true)
     public static void villagerQuitsAtZero(GameTestHelper helper) {
         Villager villager = trader(helper, VillagerProfession.FARMER, 3, 0.0);
+        ServerPlayer witness = mockServerPlayer(helper);
+        BlockPos near = helper.absolutePos(new BlockPos(8, 1, 12));
+        witness.teleportTo(near.getX() + 0.5, near.getY(), near.getZ() + 0.5);
         helper.succeedWhen(() -> {
+            check(helper, hasAdvancement(witness, ModAdvancements.LABOUR_STRIKE), "a nearby player should get Labour Strike");
             check(helper, villager.getVillagerData().getProfession() == VillagerProfession.NONE, "villager should have quit");
             check(helper, HappinessManager.get(villager).hasQuit(), "quit flag should be set");
             check(helper, villager.getOffers().isEmpty(), "a villager who quit has no trades");
