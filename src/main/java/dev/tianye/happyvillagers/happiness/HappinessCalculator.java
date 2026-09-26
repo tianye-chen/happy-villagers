@@ -2,6 +2,7 @@ package dev.tianye.happyvillagers.happiness;
 
 import dev.tianye.happyvillagers.HappyConfig;
 import dev.tianye.happyvillagers.HappyVillagers;
+import dev.tianye.happyvillagers.trait.TraitEffects;
 import dev.tianye.happyvillagers.mixin.VillagerAccessor;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,6 +69,9 @@ public final class HappinessCalculator {
 
         addSafety(level, villager, data, factors);
         addMoodEvents(level, data, factors);
+        if (HappyConfig.TRAITS_ENABLED.get()) {
+            factors = TraitEffects.apply(data.traits(), factors);
+        }
 
         double target = HappyConfig.BASE_HAPPINESS.get();
         for (HappinessFactor factor : factors) {

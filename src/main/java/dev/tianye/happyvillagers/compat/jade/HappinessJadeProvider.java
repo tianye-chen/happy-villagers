@@ -11,6 +11,7 @@ import java.util.Locale;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -34,6 +35,7 @@ public enum HappinessJadeProvider implements IEntityComponentProvider, IServerDa
     private static final String KEY_TARGET = "happyvillagers:target";
     private static final String KEY_QUIT = "happyvillagers:quit";
     private static final String KEY_FACTORS = "happyvillagers:factors";
+    private static final String KEY_TRAITS = "happyvillagers:traits";
 
     @Override
     public void appendServerData(CompoundTag data, EntityAccessor accessor) {
@@ -56,9 +58,14 @@ public enum HappinessJadeProvider implements IEntityComponentProvider, IServerDa
                     tag.putDouble("value", f.value());
                     tag.putInt("detail", f.detail());
                     tag.putBoolean("positive", f.positive());
+                    tag.putString("trait", f.trait());
                     factors.add(tag);
                 });
         data.put(KEY_FACTORS, factors);
+
+        ListTag traits = new ListTag();
+        happiness.traits().forEach(id -> traits.add(StringTag.valueOf(id.toString())));
+        data.put(KEY_TRAITS, traits);
     }
 
     @Override
@@ -88,6 +95,11 @@ public enum HappinessJadeProvider implements IEntityComponentProvider, IServerDa
             }
             return;
         }
+        ListTag traits = data.getList(KEY_TRAITS, Tag.TAG_STRING);
+        if (!traits.isEmpty()) {
+            tooltip.add(dev.tianye.happyvillagers.trait.Trait.traitsLine(
+                    traits.stream().map(Tag::getAsString).toList()));
+        }
         double target = data.getDouble(KEY_TARGET);
         if (target != happiness) {
             String key = target > happiness ? "happyvillagers.tooltip.rising" : "happyvillagers.tooltip.falling";
@@ -95,7 +107,8 @@ public enum HappinessJadeProvider implements IEntityComponentProvider, IServerDa
         }
         for (int i = 0; i < factors.size(); i++) {
             CompoundTag f = factors.getCompound(i);
-            tooltip.add(new HappinessFactor(f.getString("id"), f.getDouble("value"), f.getInt("detail"), f.getBoolean("positive")).describe());
+            tooltip.add(new HappinessFactor(f.getString("id"), f.getDouble("value"), f.getInt("detail"), f.getBoolean("positive"),
+                    f.getString("trait")).describe());
         }
     }
 

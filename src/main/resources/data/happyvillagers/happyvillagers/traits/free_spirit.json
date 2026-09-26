@@ -1,0 +1,14 @@
+{
+  "weight": 10,
+  "conflicts": [
+    "happyvillagers:homebody"
+  ],
+  "modifiers": {
+    "sky": {
+      "multiply": 2.0
+    },
+    "homeless": {
+      "add": 1.0
+    }
+  }
+}

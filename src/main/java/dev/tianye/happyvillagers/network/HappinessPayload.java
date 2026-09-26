@@ -15,24 +15,38 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.inventory.MerchantMenu;
 import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.codec.NeoForgeStreamCodecs;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /** Happiness details for the trade screen the player currently has open. */
 public record HappinessPayload(int containerId, double happiness, double target, double priceModifier,
-                               int lockedTrades, int bonusTrades, List<HappinessFactor> factors)
+                               int lockedTrades, int bonusTrades, List<HappinessFactor> factors, List<String> traits)
         implements CustomPacketPayload {
     public static final Type<HappinessPayload> TYPE = new Type<>(HappyVillagers.id("happiness"));
 
-    public static final StreamCodec<ByteBuf, HappinessPayload> STREAM_CODEC = NeoForgeStreamCodecs.composite(
-            ByteBufCodecs.VAR_INT, HappinessPayload::containerId,
-            ByteBufCodecs.DOUBLE, HappinessPayload::happiness,
-            ByteBufCodecs.DOUBLE, HappinessPayload::target,
-            ByteBufCodecs.DOUBLE, HappinessPayload::priceModifier,
-            ByteBufCodecs.VAR_INT, HappinessPayload::lockedTrades,
-            ByteBufCodecs.VAR_INT, HappinessPayload::bonusTrades,
-            HappinessFactor.STREAM_CODEC.apply(ByteBufCodecs.list()), HappinessPayload::factors,
-            HappinessPayload::new);
+    private static final StreamCodec<ByteBuf, List<HappinessFactor>> FACTORS = HappinessFactor.STREAM_CODEC.apply(ByteBufCodecs.list());
+    private static final StreamCodec<ByteBuf, List<String>> TRAITS = ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list());
+
+    /** Written by hand: eight fields is more than the composite helpers take. */
+    public static final StreamCodec<ByteBuf, HappinessPayload> STREAM_CODEC = StreamCodec.of(
+            (buf, p) -> {
+                ByteBufCodecs.VAR_INT.encode(buf, p.containerId);
+                ByteBufCodecs.DOUBLE.encode(buf, p.happiness);
+                ByteBufCodecs.DOUBLE.encode(buf, p.target);
+                ByteBufCodecs.DOUBLE.encode(buf, p.priceModifier);
+                ByteBufCodecs.VAR_INT.encode(buf, p.lockedTrades);
+                ByteBufCodecs.VAR_INT.encode(buf, p.bonusTrades);
+                FACTORS.encode(buf, p.factors);
+                TRAITS.encode(buf, p.traits);
+            },
+            buf -> new HappinessPayload(
+                    ByteBufCodecs.VAR_INT.decode(buf),
+                    ByteBufCodecs.DOUBLE.decode(buf),
+                    ByteBufCodecs.DOUBLE.decode(buf),
+                    ByteBufCodecs.DOUBLE.decode(buf),
+                    ByteBufCodecs.VAR_INT.decode(buf),
+                    ByteBufCodecs.VAR_INT.decode(buf),
+                    FACTORS.decode(buf),
+                    TRAITS.decode(buf)));
 
     @Override
     public Type<? extends CustomPacketPayload> type() {
@@ -47,7 +61,7 @@ public record HappinessPayload(int containerId, double happiness, double target,
         double modifier = session != null ? session.priceModifier() : HappyTrading.priceModifier(data.happiness());
         PacketDistributor.sendToPlayer(player, new HappinessPayload(menu.containerId, data.happiness(), data.target(),
                 modifier, session != null ? session.locked() : 0, session != null ? session.bonusOffers().size() : 0,
-                data.factors()));
+                data.factors(), data.traits().stream().map(Object::toString).toList()));
     }
 
     public static void handle(HappinessPayload payload, IPayloadContext context) {

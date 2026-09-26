@@ -12,6 +12,19 @@ import dev.tianye.happyvillagers.happiness.HappinessFactor;
 import dev.tianye.happyvillagers.happiness.MoodEvent;
 import dev.tianye.happyvillagers.trade.BonusTrade;
 import dev.tianye.happyvillagers.trade.BonusTradeManager;
+import dev.tianye.happyvillagers.trade.HappyTrading;
+import dev.tianye.happyvillagers.trade.SpecialTrades;
+import dev.tianye.happyvillagers.trait.TraitEffects;
+import dev.tianye.happyvillagers.trait.TraitManager;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.inventory.AnvilMenu;
+import net.minecraft.world.inventory.ContainerLevelAccess;
+import net.minecraft.world.item.EnchantedBookItem;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.EnchantmentInstance;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -214,8 +227,8 @@ public class HappinessGameTests {
     @GameTest(template = EMPTY, skyAccess = true)
     public static void bonusTradesLoadFromDatapack(GameTestHelper helper) {
         List<BonusTrade> trades = BonusTradeManager.trades();
-        check(helper, trades.size() == 9, "expected the 9 default bonus trades from the datapack, got " + trades.size());
-        check(helper, trades.stream().anyMatch(t -> t.key().equals(HappyVillagers.id("librarian_mending"))),
+        check(helper, trades.size() == 7, "expected the 7 default bonus trades from the datapack, got " + trades.size());
+        check(helper, trades.stream().anyMatch(t -> t.key().equals(HappyVillagers.id("librarian_unbreaking"))),
                 "bonus trades should be keyed by file id");
         helper.succeed();
     }
@@ -322,6 +335,138 @@ public class HappinessGameTests {
                 GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(5, 1, 6))));
         HomeScanner.Result home = HomeScanner.findHome(helper.getLevel(), villager, HappinessManager.get(villager));
         check(helper, !home.enclosed() && home.skyAccess(), "a bed out in the open is not a home");
+        helper.succeed();
+    }
+
+    private static final List<VillagerProfession> TRADING_PROFESSIONS = List.of(
+            VillagerProfession.ARMORER, VillagerProfession.BUTCHER, VillagerProfession.CARTOGRAPHER, VillagerProfession.CLERIC,
+            VillagerProfession.FARMER, VillagerProfession.FISHERMAN, VillagerProfession.FLETCHER, VillagerProfession.LEATHERWORKER,
+            VillagerProfession.LIBRARIAN, VillagerProfession.MASON, VillagerProfession.SHEPHERD, VillagerProfession.TOOLSMITH,
+            VillagerProfession.WEAPONSMITH);
+
+    @GameTest(template = EMPTY, skyAccess = true)
+    public static void specialTradesForEveryProfession(GameTestHelper helper) {
+        buildFloor(helper);
+        int x = 0;
+        for (VillagerProfession profession : TRADING_PROFESSIONS) {
+            List<BonusTrade> specials = SpecialTrades.forProfession(profession, helper.getLevel().registryAccess());
+            check(helper, specials.size() == 1, profession + ": the default special trade should parse, got " + specials.size());
+            ItemStack expected = specials.get(0).result();
+
+            Villager villager = helper.spawnWithNoFreeWill(EntityType.VILLAGER, x++, 1, 12);
+            villager.setVillagerData(villager.getVillagerData().setProfession(profession).setLevel(1));
+            HappinessData data = HappinessManager.get(villager);
+            data.markInitialized();
+            data.setTraits(List.of());
+
+            data.setHappiness(9.9);
+            HappyTrading.beginSession(villager);
+            check(helper, villager.getOffers().stream().noneMatch(o -> ItemStack.isSameItemSameComponents(o.getResult(), expected)),
+                    profession + ": no special trade below happiness 10");
+            HappyTrading.endSession(villager);
+
+            data.setHappiness(10.0);
+            HappyTrading.beginSession(villager);
+            check(helper, villager.getOffers().stream().anyMatch(o -> ItemStack.isSameItemSameComponents(o.getResult(), expected)),
+                    profession + ": special trade missing at happiness 10");
+            HappyTrading.endSession(villager);
+        }
+        helper.succeed();
+    }
+
+    private static int protectionOn(GameTestHelper helper, ItemStack stack) {
+        var protection = helper.getLevel().registryAccess().registryOrThrow(Registries.ENCHANTMENT).getHolderOrThrow(Enchantments.PROTECTION);
+        return Math.max(EnchantmentHelper.getItemEnchantmentLevel(protection, stack),
+                stack.getOrDefault(DataComponents.STORED_ENCHANTMENTS, ItemEnchantments.EMPTY).getLevel(protection));
+    }
+
+    private static ItemStack combine(GameTestHelper helper, ServerPlayer player, ItemStack left, ItemStack right) {
+        AnvilMenu anvil = new AnvilMenu(0, player.getInventory(), ContainerLevelAccess.NULL);
+        anvil.getSlot(0).set(left);
+        anvil.getSlot(1).set(right);
+        anvil.createResult();
+        return anvil.getSlot(2).getItem();
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true)
+    public static void anvilKeepsAboveMaxLevels(GameTestHelper helper) {
+        ServerPlayer player = mockServerPlayer(helper);
+        var protection = helper.getLevel().registryAccess().registryOrThrow(Registries.ENCHANTMENT).getHolderOrThrow(Enchantments.PROTECTION);
+
+        ItemStack chestplate = new ItemStack(Items.DIAMOND_CHESTPLATE);
+        chestplate.enchant(protection, 4);
+        ItemStack result = combine(helper, player, chestplate, EnchantedBookItem.createForEnchantment(new EnchantmentInstance(protection, 5)));
+        check(helper, protectionOn(helper, result) == 5, "Protection V book on Protection IV armor should give V, got " + protectionOn(helper, result));
+
+        ItemStack books = combine(helper, player, EnchantedBookItem.createForEnchantment(new EnchantmentInstance(protection, 5)),
+                EnchantedBookItem.createForEnchantment(new EnchantmentInstance(protection, 5)));
+        check(helper, protectionOn(helper, books) == 5, "V + V must not go above V, got " + protectionOn(helper, books));
+
+        ItemStack vanilla = new ItemStack(Items.DIAMOND_CHESTPLATE);
+        vanilla.enchant(protection, 3);
+        ItemStack combined = combine(helper, player, vanilla, EnchantedBookItem.createForEnchantment(new EnchantmentInstance(protection, 3)));
+        check(helper, protectionOn(helper, combined) == 4, "vanilla III + III should still give IV, got " + protectionOn(helper, combined));
+        helper.succeed();
+    }
+
+    private static ResourceLocation trait(String name) {
+        return HappyVillagers.id(name);
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true)
+    public static void traitsChangeFactors(GameTestHelper helper) {
+        check(helper, TraitManager.all().size() == 12, "expected 12 default traits, got " + TraitManager.all().size());
+        List<HappinessFactor> base = List.of(
+                HappinessFactor.of("light", 0.8, 15),
+                HappinessFactor.of("greenery", 0.3, 3),
+                HappinessFactor.missing("no_greenery"));
+
+        List<HappinessFactor> owl = TraitEffects.apply(List.of(trait("night_owl")), base);
+        HappinessFactor light = owl.get(0);
+        check(helper, Math.abs(light.value() + 0.8) < 1e-9 && !light.positive() && light.trait().equals(trait("night_owl").toString()),
+                "Night Owl should turn bright light into -0.8, got " + light);
+
+        List<HappinessFactor> nature = TraitEffects.apply(List.of(trait("nature_lover"), trait("cheerful")), base);
+        check(helper, Math.abs(nature.get(1).value() - 0.6) < 1e-9, "Nature Lover doubles greenery, got " + nature.get(1));
+        check(helper, Math.abs(nature.get(2).value() + 0.5) < 1e-9, "Nature Lover dislikes no greenery, got " + nature.get(2));
+        HappinessFactor disposition = nature.get(nature.size() - 1);
+        check(helper, disposition.id().equals(TraitEffects.DISPOSITION) && Math.abs(disposition.value() - 0.5) < 1e-9,
+                "Cheerful adds +0.5 disposition, got " + disposition);
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true)
+    public static void traitRollsRespectLimitsAndConflicts(GameTestHelper helper) {
+        RandomSource random = RandomSource.create(42);
+        for (int i = 0; i < 200; i++) {
+            List<ResourceLocation> rolled = TraitManager.roll(random);
+            check(helper, !rolled.isEmpty() && rolled.size() <= HappyConfig.MAX_TRAITS.get(), "bad trait count " + rolled);
+            check(helper, rolled.stream().distinct().count() == rolled.size(), "duplicate traits " + rolled);
+            check(helper, !(rolled.contains(trait("introvert")) && rolled.contains(trait("social_butterfly"))), "conflicting traits " + rolled);
+            check(helper, !(rolled.contains(trait("brave")) && rolled.contains(trait("sensitive"))), "conflicting traits " + rolled);
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true)
+    public static void babiesInheritTraits(GameTestHelper helper) {
+        buildFloor(helper);
+        Villager mom = helper.spawnWithNoFreeWill(EntityType.VILLAGER, 4, 1, 4);
+        Villager dad = helper.spawnWithNoFreeWill(EntityType.VILLAGER, 6, 1, 4);
+        HappinessManager.get(mom).setTraits(List.of(trait("night_owl")));
+        HappinessManager.get(dad).setTraits(List.of(trait("night_owl")));
+        int inherited = 0;
+        for (int i = 0; i < 100; i++) {
+            Villager baby = mom.getBreedOffspring(helper.getLevel(), dad);
+            HappinessData babyData = HappinessManager.get(baby);
+            check(helper, babyData.traitsRolled() && !babyData.traits().isEmpty(), "the breeding mixin should give the baby traits");
+            if (babyData.traits().contains(trait("night_owl"))) {
+                inherited++;
+            }
+            baby.discard();
+        }
+        // 50% from inheritance alone, plus the chance of rolling it anyway.
+        check(helper, inherited >= 35, "Night Owl should usually be inherited from two Night Owl parents, got " + inherited + "/100");
         helper.succeed();
     }
 

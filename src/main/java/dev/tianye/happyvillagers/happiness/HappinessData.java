@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
 /** Per-villager happiness state, stored as a NeoForge data attachment. */
@@ -20,7 +21,9 @@ public class HappinessData {
             Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("bonus_uses", Map.of()).forGetter(d -> d.bonusUses),
             GlobalPos.CODEC.optionalFieldOf("home").forGetter(d -> d.homeAnchor),
             MoodEvent.CODEC.listOf().optionalFieldOf("events", List.of()).forGetter(d -> d.events),
-            Codec.INT.optionalFieldOf("last_raid", 0).forGetter(d -> d.lastRaidId)
+            Codec.INT.optionalFieldOf("last_raid", 0).forGetter(d -> d.lastRaidId),
+            ResourceLocation.CODEC.listOf().optionalFieldOf("traits", List.of()).forGetter(d -> d.traits),
+            Codec.BOOL.optionalFieldOf("traits_rolled", false).forGetter(d -> d.traitsRolled)
     ).apply(i, HappinessData::new));
 
     // Persisted
@@ -34,6 +37,8 @@ public class HappinessData {
     private final List<MoodEvent> events;
     /** Id of the last raid this villager celebrated surviving, so a victory only counts once. */
     private int lastRaidId;
+    private List<ResourceLocation> traits;
+    private boolean traitsRolled;
 
     // Transient, recomputed by HappinessCalculator
     private double target;
@@ -43,11 +48,12 @@ public class HappinessData {
     private List<HappinessFactor> factors = List.of();
 
     public HappinessData() {
-        this(5.0, false, false, 0L, Map.of(), Optional.empty(), List.of(), 0);
+        this(5.0, false, false, 0L, Map.of(), Optional.empty(), List.of(), 0, List.of(), false);
     }
 
     private HappinessData(double happiness, boolean initialized, boolean quit, long lastSocialTime, Map<String, Integer> bonusUses,
-                          Optional<GlobalPos> homeAnchor, List<MoodEvent> events, int lastRaidId) {
+                          Optional<GlobalPos> homeAnchor, List<MoodEvent> events, int lastRaidId,
+                          List<ResourceLocation> traits, boolean traitsRolled) {
         this.happiness = happiness;
         this.target = happiness;
         this.initialized = initialized;
@@ -57,6 +63,22 @@ public class HappinessData {
         this.homeAnchor = homeAnchor;
         this.events = new ArrayList<>(events);
         this.lastRaidId = lastRaidId;
+        this.traits = List.copyOf(traits);
+        this.traitsRolled = traitsRolled;
+    }
+
+    public List<ResourceLocation> traits() {
+        return traits;
+    }
+
+    /** Whether this villager has been given its personality (existing villagers get one on first load). */
+    public boolean traitsRolled() {
+        return traitsRolled;
+    }
+
+    public void setTraits(List<ResourceLocation> traits) {
+        this.traits = List.copyOf(traits);
+        this.traitsRolled = true;
     }
 
     /** Raw happiness with full precision; drift works on this value. */

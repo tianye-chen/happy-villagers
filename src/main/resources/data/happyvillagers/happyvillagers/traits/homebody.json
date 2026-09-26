@@ -1,0 +1,21 @@
+{
+  "weight": 10,
+  "conflicts": [
+    "happyvillagers:free_spirit",
+    "happyvillagers:claustrophobic"
+  ],
+  "modifiers": {
+    "roof": {
+      "multiply": 2.0
+    },
+    "bed": {
+      "multiply": 2.0
+    },
+    "door": {
+      "multiply": 2.0
+    },
+    "sky": {
+      "multiply": 0.5
+    }
+  }
+}

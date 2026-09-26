@@ -63,7 +63,9 @@ public final class HappyTrading {
         List<MerchantOffer> bonusOffers = new ArrayList<>();
         List<String> bonusKeys = new ArrayList<>();
         VillagerData villagerData = villager.getVillagerData();
-        for (BonusTrade trade : BonusTradeManager.trades()) {
+        List<BonusTrade> candidates = new ArrayList<>(BonusTradeManager.trades());
+        candidates.addAll(SpecialTrades.forProfession(villagerData.getProfession(), villager.registryAccess()));
+        for (BonusTrade trade : candidates) {
             if (trade.appliesTo(villagerData.getProfession(), villagerData.getLevel(), happiness)) {
                 MerchantOffer offer = trade.createOffer(data.bonusUses().getOrDefault(trade.key().toString(), 0));
                 offers.add(offer);

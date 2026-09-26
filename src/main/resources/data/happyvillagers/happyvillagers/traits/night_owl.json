@@ -1,0 +1,11 @@
+{
+  "weight": 10,
+  "modifiers": {
+    "light": {
+      "multiply": -1.0
+    },
+    "dark": {
+      "multiply": -1.0
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "profession": "minecraft:fletcher",
+  "min_happiness": 9.0,
+  "min_level": 3,
+  "cost_a": {
+    "id": "minecraft:emerald",
+    "count": 10
+  },
+  "result": {
+    "id": "minecraft:spectral_arrow",
+    "count": 32
+  },
+  "max_uses": 4,
+  "xp": 20
+}

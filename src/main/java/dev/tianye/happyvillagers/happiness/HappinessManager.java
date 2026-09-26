@@ -4,6 +4,7 @@ import dev.tianye.happyvillagers.HappyConfig;
 import dev.tianye.happyvillagers.ModAdvancements;
 import dev.tianye.happyvillagers.ModAttachments;
 import dev.tianye.happyvillagers.network.HappinessPayload;
+import dev.tianye.happyvillagers.trait.TraitManager;
 import dev.tianye.happyvillagers.trade.HappyTrading;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -43,6 +44,9 @@ public final class HappinessManager {
         if (!data.isInitialized()) {
             data.setHappiness(HappyConfig.INITIAL_HAPPINESS.get());
             data.markInitialized();
+        }
+        if (!data.traitsRolled() && HappyConfig.TRAITS_ENABLED.get() && !TraitManager.all().isEmpty()) {
+            data.setTraits(TraitManager.roll(villager.getRandom()));
         }
 
         boolean changed = false;

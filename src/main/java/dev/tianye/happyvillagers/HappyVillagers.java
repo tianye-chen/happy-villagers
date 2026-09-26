@@ -5,6 +5,7 @@ import dev.tianye.happyvillagers.happiness.HappinessManager;
 import dev.tianye.happyvillagers.happiness.MoodEventHandler;
 import dev.tianye.happyvillagers.network.HappinessPayload;
 import dev.tianye.happyvillagers.trade.BonusTradeManager;
+import dev.tianye.happyvillagers.trait.TraitManager;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -26,6 +27,7 @@ public class HappyVillagers {
 
         NeoForge.EVENT_BUS.register(HappinessManager.class);
         NeoForge.EVENT_BUS.register(BonusTradeManager.class);
+        NeoForge.EVENT_BUS.register(TraitManager.class);
         NeoForge.EVENT_BUS.register(MoodEventHandler.class);
         NeoForge.EVENT_BUS.register(ModAdvancements.class);
     }

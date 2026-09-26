@@ -1,5 +1,9 @@
 package dev.tianye.happyvillagers;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
@@ -75,6 +79,17 @@ public final class HappyConfig {
 
     // ---------------------------------------------------------------- jade
     public static final ModConfigSpec.IntValue JADE_MAX_FACTORS;
+
+    // ---------------------------------------------------------------- traits
+    public static final ModConfigSpec.BooleanValue TRAITS_ENABLED;
+    public static final ModConfigSpec.IntValue MAX_TRAITS;
+
+    // ---------------------------------------------------------------- special trades
+    public static final ModConfigSpec.BooleanValue SPECIAL_TRADES_ENABLED;
+    public static final ModConfigSpec.DoubleValue SPECIAL_TRADES_MIN_HAPPINESS;
+    public static final ModConfigSpec.IntValue SPECIAL_TRADES_MIN_LEVEL;
+    /** Profession path (vanilla professions) -> its list of special trade entries. */
+    public static final Map<String, ModConfigSpec.ConfigValue<List<? extends String>>> SPECIAL_TRADES = new LinkedHashMap<>();
 
     static {
         BUILDER.push("general");
@@ -172,6 +187,11 @@ public final class HappyConfig {
 
     public static final ModConfigSpec SPEC;
 
+    private static void specialTrades(String profession, String... defaults) {
+        SPECIAL_TRADES.put(profession, BUILDER.defineListAllowEmpty(profession, List.of(defaults), () -> "",
+                o -> o instanceof String entry && (entry.isBlank() || entry.split("\\|").length == 5)));
+    }
+
     static {
         BUILDER.comment("Short-lived mood changes. Each fades linearly to 0 over its duration (ticks; 24000 = 1 day).",
                 "A repeat of the same event refreshes it instead of stacking.").push("moodEvents");
@@ -209,6 +229,37 @@ public final class HappyConfig {
         BUILDER.push("jade");
         JADE_MAX_FACTORS = BUILDER.comment("How many factors Jade lists while its details key (Shift) is held.")
                 .defineInRange("jadeMaxFactors", 5, 0, 32);
+        BUILDER.pop();
+
+        BUILDER.comment("Each villager gets personality traits (datapack files in data/<namespace>/happyvillagers/traits/)",
+                "that change how much each happiness factor matters to it. Babies can inherit their parents' traits.").push("traits");
+        TRAITS_ENABLED = BUILDER.define("enabled", true);
+        MAX_TRAITS = BUILDER.comment("Traits per villager: 1 to this many.").defineInRange("maxTraits", 2, 1, 5);
+        BUILDER.pop();
+
+        BUILDER.comment("Powerful trades each profession offers only when it is at its very happiest.",
+                "Each profession takes a list of entries (empty list = none). Entry format, fields separated by '|':",
+                "  costA | costB or - | result | maxUses | xp",
+                "Items use /give syntax with an optional count in front, e.g. '24 minecraft:emerald' or",
+                "  minecraft:enchanted_book[stored_enchantments={levels:{'minecraft:mending':1}}]").push("specialTrades");
+        SPECIAL_TRADES_ENABLED = BUILDER.define("enabled", true);
+        SPECIAL_TRADES_MIN_HAPPINESS = BUILDER.comment("Happiness needed to offer special trades.")
+                .defineInRange("minHappiness", 10.0, 0.0, 10.0);
+        SPECIAL_TRADES_MIN_LEVEL = BUILDER.comment("Villager level needed to offer special trades (1 = Novice, 5 = Master).")
+                .defineInRange("minLevel", 1, 1, 5);
+        specialTrades("armorer", "40 minecraft:emerald | 1 minecraft:book | minecraft:enchanted_book[stored_enchantments={levels:{'minecraft:protection':5}}] | 1 | 30");
+        specialTrades("butcher", "40 minecraft:emerald | 1 minecraft:gold_block | 1 minecraft:enchanted_golden_apple | 1 | 30");
+        specialTrades("cartographer", "32 minecraft:emerald | 1 minecraft:compass | 1 minecraft:heart_of_the_sea | 1 | 30");
+        specialTrades("cleric", "40 minecraft:emerald | - | 1 minecraft:totem_of_undying | 1 | 30");
+        specialTrades("farmer", "24 minecraft:emerald | - | 64 minecraft:golden_carrot | 2 | 20");
+        specialTrades("fisherman", "40 minecraft:emerald | 1 minecraft:prismarine_shard | 1 minecraft:trident | 1 | 30");
+        specialTrades("fletcher", "24 minecraft:emerald | - | 16 minecraft:tipped_arrow[potion_contents={potion:'minecraft:strong_harming'}] | 2 | 20");
+        specialTrades("leatherworker", "64 minecraft:emerald | 8 minecraft:phantom_membrane | 1 minecraft:elytra | 1 | 30");
+        specialTrades("librarian", "24 minecraft:emerald | 1 minecraft:book | minecraft:enchanted_book[stored_enchantments={levels:{'minecraft:mending':1}}] | 2 | 30");
+        specialTrades("mason", "40 minecraft:emerald | - | 2 minecraft:ancient_debris | 1 | 30");
+        specialTrades("shepherd", "32 minecraft:emerald | - | 2 minecraft:shulker_shell | 1 | 30");
+        specialTrades("toolsmith", "28 minecraft:emerald | 1 minecraft:book | minecraft:enchanted_book[stored_enchantments={levels:{'minecraft:fortune':3}}] | 1 | 30");
+        specialTrades("weaponsmith", "32 minecraft:emerald | 1 minecraft:book | minecraft:enchanted_book[stored_enchantments={levels:{'minecraft:sharpness':5}}] | 1 | 30");
         BUILDER.pop();
 
         SPEC = BUILDER.build();

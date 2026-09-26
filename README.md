@@ -19,8 +19,29 @@ A NeoForge mod for Minecraft **1.21.1** (NeoForge 21.1.251) that gives every vil
 | 1–3.9 | Miserable, Very Unhappy, Unhappy | Higher prices; below 4.0 the highest-tier trades are withheld proportionally |
 | 4–4.9 | Grumpy | Slightly higher prices |
 | 5–5.9 | Neutral | **Exactly vanilla** |
-| 6–9.9 | Content, Happy, Very Happy, Potential Man | Up to 30% cheaper; bonus trades unlock (e.g. enchanted diamond gear at 9) |
-| 10 | Ecstatic | 30% cheaper; librarians offer **Mending** |
+| 6–9.9 | Content, Happy, Very Happy, Potential Man | Up to 30% cheaper; bonus trades unlock (e.g. diamond gear at 9) |
+| 10 | Ecstatic | 30% cheaper; every profession offers a powerful **special trade** (see below) |
+
+### Personality traits
+
+Every villager has 1–2 traits that change how much each factor matters to it. The trade tooltip lists them, and factor lines a trait changed are tagged with its name. Babies have a 50% chance to inherit each parent trait; free slots are rolled randomly, and conflicting traits are never combined.
+
+| Trait | Effect |
+|---|---|
+| Introvert | Crowding ×2, gossip bonus ×0.5 |
+| Social Butterfly | Gossip bonus ×2; −1.0 when lonely |
+| Night Owl | Light factor inverted: dim is pleasant, bright is not |
+| Nature Lover | Greenery ×2; −0.5 without greenery |
+| Claustrophobic | Living space score ×1.5; −1.0 without a way outside |
+| Homebody | Roof, bed and door ×2; sky access ×0.5 |
+| Free Spirit | Sky access ×2; +1.0 when homeless |
+| Glutton | Food ×2; −1.0 without food |
+| Brave | Unbothered by raids; grief ×0.5 |
+| Sensitive | Being hurt ×2; grief ×1.5 |
+| Devoted | Profession tastes ×2 |
+| Cheerful | +0.5 baseline |
+
+Traits are datapack JSON files in `data/<namespace>/happyvillagers/traits/`. Each has a `weight` (rarity), `conflicts` (other trait ids) and `modifiers` (keys are factor ids, `{ "multiply": 2.0 }` and/or `{ "add": -1.0 }`), plus an optional `base`. Datapacks can add traits or override these.
 
 ### Happiness factors
 
@@ -65,6 +86,35 @@ A remembered home is forgotten once it no longer closes, e.g. a wall is knocked 
 
 A lit 5×5 house with a bed, door, windows, a plant, food and neighbors lands around 7–8; a 7×7 house pushes it past 9. A homeless villager with food and neighbors sits around 4 (Grumpy); without them it sits near 1. A 1×1 trading-hall cell drops to 0.
 
+## Special trades (happiness 10)
+
+At happiness 10, each profession offers a powerful trade. Prices are before the 30% happiness discount.
+
+| Profession | Special trade |
+|---|---|
+| Armorer | 40 emeralds + book → Protection V book |
+| Butcher | 40 emeralds + gold block → Enchanted Golden Apple |
+| Cartographer | 32 emeralds + compass → Heart of the Sea |
+| Cleric | 40 emeralds → Totem of Undying |
+| Farmer | 24 emeralds → 64 Golden Carrots |
+| Fisherman | 40 emeralds + prismarine shard → Trident |
+| Fletcher | 24 emeralds → 16 Arrows of Harming II |
+| Leatherworker | 64 emeralds + 8 phantom membranes → Elytra |
+| Librarian | 24 emeralds + book → Mending book |
+| Mason | 40 emeralds → 2 Ancient Debris |
+| Shepherd | 32 emeralds → 2 Shulker Shells |
+| Toolsmith | 28 emeralds + book → Fortune III book |
+| Weaponsmith | 32 emeralds + book → Sharpness V book |
+
+They're set in the `[specialTrades]` config section: one list per profession (an empty list turns it off), plus `minHappiness` (10.0) and `minLevel` (1). Entries use `/give` item syntax:
+
+```
+costA | costB or - | result | maxUses | xp
+24 minecraft:emerald | 1 minecraft:book | minecraft:enchanted_book[stored_enchantments={levels:{'minecraft:mending':1}}] | 2 | 30
+```
+
+Enchantment levels above the vanilla maximum, like Protection V, carry over on the anvil. Combining two of them never goes higher: V + V stays V.
+
 ## Config
 
 `config/happyvillagers-common.toml` is created on first launch. Every number above can be changed there.
@@ -97,7 +147,7 @@ Bonus trades are JSON files in `data/<namespace>/happyvillagers/bonus_trades/`. 
 }
 ```
 
-`cost_b`, `min_level` (default 1) and `xp` (default 0) are optional. Default trades cover the librarian (Mending, Unbreaking III), armorer, toolsmith, weaponsmith, fletcher, fisherman, farmer (golden apple) and cleric (totem).
+`cost_b`, `min_level` (default 1) and `xp` (default 0) are optional. The default datapack trades are the lower-tier ones: librarian (Unbreaking III book), armorer, toolsmith and weaponsmith (diamond gear), fletcher (spectral arrows), fisherman (sponges) and farmer (golden apple). The happiness-10 trades live in the config (see above).
 
 ## Advancements
 
@@ -116,9 +166,9 @@ Requires **JDK 21** (for example `brew install --cask temurin@21`).
 
 ```sh
 export JAVA_HOME=$(/usr/libexec/java_home -v 21)
-./gradlew build              # -> build/libs/happyvillagers-1.1.2.jar
+./gradlew build              # -> build/libs/happyvillagers-1.2.0.jar
 ./gradlew runClient          # dev client with Jade
-./gradlew runGameTestServer  # 15 in-world tests (homes, trading, quitting, mood events, tastes, crowding, advancements)
+./gradlew runGameTestServer  # 23 in-world tests (homes, trading, special trades, anvil, traits, mood events, crowding, advancements, performance safeguards)
 ```
 
 Jade is optional at runtime. It is compiled against and loaded in dev runs only.

@@ -1,0 +1,11 @@
+{
+  "weight": 10,
+  "modifiers": {
+    "greenery": {
+      "multiply": 2.0
+    },
+    "no_greenery": {
+      "add": -0.5
+    }
+  }
+}

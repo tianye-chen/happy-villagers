@@ -4,6 +4,7 @@ import dev.tianye.happyvillagers.HappyVillagers;
 import dev.tianye.happyvillagers.happiness.HappinessFactor;
 import dev.tianye.happyvillagers.happiness.HappinessLevel;
 import dev.tianye.happyvillagers.network.HappinessPayload;
+import dev.tianye.happyvillagers.trait.Trait;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -71,6 +72,9 @@ public final class MerchantScreenOverlay {
         lines.add(Component.translatable("happyvillagers.tooltip.title",
                 String.format(Locale.ROOT, "%.1f", info.happiness())).withStyle(ChatFormatting.WHITE));
         lines.add(level.displayName().copy().withStyle(ChatFormatting.ITALIC));
+        if (!info.traits().isEmpty()) {
+            lines.add(Trait.traitsLine(info.traits()));
+        }
 
         if (info.target() != info.happiness()) {
             String key = info.target() > info.happiness() ? "happyvillagers.tooltip.rising" : "happyvillagers.tooltip.falling";

@@ -1,0 +1,8 @@
+{
+  "weight": 10,
+  "modifiers": {
+    "tastes": {
+      "multiply": 2.0
+    }
+  }
+}

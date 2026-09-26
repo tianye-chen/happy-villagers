@@ -1,0 +1,14 @@
+{
+  "weight": 10,
+  "conflicts": [
+    "happyvillagers:social_butterfly"
+  ],
+  "modifiers": {
+    "crowded": {
+      "multiply": 2.0
+    },
+    "social": {
+      "multiply": 0.5
+    }
+  }
+}

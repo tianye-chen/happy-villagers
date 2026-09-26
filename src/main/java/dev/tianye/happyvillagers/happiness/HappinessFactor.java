@@ -1,5 +1,6 @@
 package dev.tianye.happyvillagers.happiness;
 
+import dev.tianye.happyvillagers.trait.Trait;
 import io.netty.buffer.ByteBuf;
 import java.util.Locale;
 import net.minecraft.ChatFormatting;
@@ -15,14 +16,20 @@ import net.minecraft.network.codec.StreamCodec;
  * @param value    contribution to the target happiness (0 for "missing" entries)
  * @param detail   number shown in the description (volume, light level, window count...)
  * @param positive whether the line is shown as a positive (lime) or negative (red) factor
+ * @param trait    id of the personality trait that changed this line, or "" if none
  */
-public record HappinessFactor(String id, double value, int detail, boolean positive) {
+public record HappinessFactor(String id, double value, int detail, boolean positive, String trait) {
     public static final StreamCodec<ByteBuf, HappinessFactor> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.STRING_UTF8, HappinessFactor::id,
             ByteBufCodecs.DOUBLE, HappinessFactor::value,
             ByteBufCodecs.VAR_INT, HappinessFactor::detail,
             ByteBufCodecs.BOOL, HappinessFactor::positive,
+            ByteBufCodecs.STRING_UTF8, HappinessFactor::trait,
             HappinessFactor::new);
+
+    public HappinessFactor(String id, double value, int detail, boolean positive) {
+        this(id, value, detail, positive, "");
+    }
 
     public static HappinessFactor of(String id, double value, int detail) {
         return new HappinessFactor(id, value, detail, value >= 0);
@@ -41,6 +48,9 @@ public record HappinessFactor(String id, double value, int detail, boolean posit
             line.append("✘ ");
         }
         line.append(Component.translatable("happyvillagers.factor." + id, detail));
+        if (!trait.isEmpty()) {
+            line.append(Component.literal(" · ").append(Trait.displayName(trait)).withStyle(ChatFormatting.ITALIC));
+        }
         return line.withStyle(positive ? ChatFormatting.GREEN : ChatFormatting.RED);
     }
 
