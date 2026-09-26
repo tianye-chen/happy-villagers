@@ -166,7 +166,7 @@ Requires **JDK 21** (for example `brew install --cask temurin@21`).
 
 ```sh
 export JAVA_HOME=$(/usr/libexec/java_home -v 21)
-./gradlew build              # -> build/libs/happyvillagers-1.2.0.jar
+./gradlew build              # -> build/libs/happyvillagers-1.2.1.jar
 ./gradlew runClient          # dev client with Jade
 ./gradlew runGameTestServer  # 23 in-world tests (homes, trading, special trades, anvil, traits, mood events, crowding, advancements, performance safeguards)
 ```

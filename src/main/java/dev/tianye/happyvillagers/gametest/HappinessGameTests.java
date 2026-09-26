@@ -13,6 +13,7 @@ import dev.tianye.happyvillagers.happiness.MoodEvent;
 import dev.tianye.happyvillagers.trade.BonusTrade;
 import dev.tianye.happyvillagers.trade.BonusTradeManager;
 import dev.tianye.happyvillagers.trade.HappyTrading;
+import dev.tianye.happyvillagers.trade.ReputationInfo;
 import dev.tianye.happyvillagers.trade.SpecialTrades;
 import dev.tianye.happyvillagers.trait.TraitEffects;
 import dev.tianye.happyvillagers.trait.TraitManager;
@@ -38,6 +39,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.ai.gossip.GossipType;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerProfession;
@@ -369,6 +371,10 @@ public class HappinessGameTests {
             HappyTrading.beginSession(villager);
             check(helper, villager.getOffers().stream().anyMatch(o -> ItemStack.isSameItemSameComponents(o.getResult(), expected)),
                     profession + ": special trade missing at happiness 10");
+            check(helper, villager.getOffers().stream()
+                            .filter(o -> ItemStack.isSameItemSameComponents(o.getResult(), expected))
+                            .allMatch(o -> o.getSpecialPriceDiff() == 0 && o.getCostA().getCount() == specials.get(0).costA().count()),
+                    profession + ": special trades must sell at their configured price, not discounted");
             HappyTrading.endSession(villager);
         }
         helper.succeed();
@@ -467,6 +473,34 @@ public class HappinessGameTests {
         }
         // 50% from inheritance alone, plus the chance of rolling it anyway.
         check(helper, inherited >= 35, "Night Owl should usually be inherited from two Night Owl parents, got " + inherited + "/100");
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY, skyAccess = true)
+    public static void reputationInfoMatchesVanillaPricing(GameTestHelper helper) {
+        Villager villager = trader(helper, VillagerProfession.FLETCHER, 1, 5.5);
+        ServerPlayer player = mockServerPlayer(helper);
+
+        ReputationInfo neutral = ReputationInfo.of(villager, player);
+        check(helper, neutral.reputation() == 0 && neutral.breakdown().isEmpty()
+                && neutral.minPriceDelta() == 0 && neutral.maxPriceDelta() == 0, "a stranger has no reputation effect, got " + neutral);
+
+        villager.getGossips().add(player.getUUID(), GossipType.MINOR_NEGATIVE, 200);
+        villager.getGossips().add(player.getUUID(), GossipType.MAJOR_NEGATIVE, 20);
+        ReputationInfo hated = ReputationInfo.of(villager, player);
+        check(helper, hated.reputation() == -300, "expected -300 reputation, got " + hated.reputation());
+        check(helper, hated.breakdown().contains(new ReputationInfo.Share("minor_negative", -200))
+                && hated.breakdown().contains(new ReputationInfo.Share("major_negative", -100)), "wrong breakdown " + hated.breakdown());
+        // Novice fletcher trades all use price multiplier 0.05: -floor(-300 * 0.05) = +15, as reported in-game.
+        check(helper, hated.minPriceDelta() == 15 && hated.maxPriceDelta() == 15, "expected +15 on every trade, got " + hated);
+
+        villager.mobInteract(player, InteractionHand.MAIN_HAND);
+        for (MerchantOffer offer : villager.getOffers()) {
+            if (offer.getBaseCostA().is(Items.STICK)) {
+                check(helper, offer.getCostA().getCount() == 47, "32 sticks + 15 reputation at neutral happiness = 47, got " + offer.getCostA().getCount());
+            }
+        }
+        player.closeContainer();
         helper.succeed();
     }
 

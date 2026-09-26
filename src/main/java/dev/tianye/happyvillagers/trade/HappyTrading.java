@@ -5,6 +5,9 @@ import dev.tianye.happyvillagers.happiness.HappinessCalculator;
 import dev.tianye.happyvillagers.happiness.HappinessData;
 import dev.tianye.happyvillagers.happiness.HappinessManager;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 import java.util.List;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.Villager;
@@ -63,20 +66,29 @@ public final class HappyTrading {
         List<MerchantOffer> bonusOffers = new ArrayList<>();
         List<String> bonusKeys = new ArrayList<>();
         VillagerData villagerData = villager.getVillagerData();
+        List<BonusTrade> specials = SpecialTrades.forProfession(villagerData.getProfession(), villager.registryAccess());
         List<BonusTrade> candidates = new ArrayList<>(BonusTradeManager.trades());
-        candidates.addAll(SpecialTrades.forProfession(villagerData.getProfession(), villager.registryAccess()));
+        candidates.addAll(specials);
+        // Special trades are the reward for maximum happiness and always sell at their configured price.
+        Set<MerchantOffer> fixedPrice = Collections.newSetFromMap(new IdentityHashMap<>());
         for (BonusTrade trade : candidates) {
             if (trade.appliesTo(villagerData.getProfession(), villagerData.getLevel(), happiness)) {
                 MerchantOffer offer = trade.createOffer(data.bonusUses().getOrDefault(trade.key().toString(), 0));
                 offers.add(offer);
                 bonusOffers.add(offer);
                 bonusKeys.add(trade.key().toString());
+                if (specials.contains(trade)) {
+                    fixedPrice.add(offer);
+                }
             }
         }
 
         double modifier = priceModifier(happiness);
         if (modifier != 0.0) {
             for (MerchantOffer offer : offers) {
+                if (fixedPrice.contains(offer)) {
+                    continue;
+                }
                 int diff = (int) Math.round(offer.getBaseCostA().getCount() * modifier);
                 if (diff != 0) {
                     offer.addToSpecialPriceDiff(diff);
